@@ -1,0 +1,54 @@
+name: Android APK
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Install Capacitor
+        run: |
+          npm install --no-audit --no-fund
+          npm install --no-save @capacitor/cli @capacitor/core @capacitor/android
+          cp build/android/capacitor.config.json .
+
+      - name: Add the Android project
+        run: |
+          npx cap add android
+          npx cap sync android
+
+      - name: Build the APK
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon
+
+      - name: Rename the artifact
+        run: cp android/app/build/outputs/apk/debug/app-debug.apk planner-pro-${GITHUB_REF_NAME:-debug}.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: planner-pro-apk
+          path: planner-pro-*.apk
+
+      - name: Attach to the release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: planner-pro-*.apk

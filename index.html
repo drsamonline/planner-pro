@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Planner Pro — an offline planner for day, week and year</title>
+<meta name="description" content="Planner Pro is a small, fast, offline-first planner. Day, week, month and year planning in one quiet screen. Multi-profile, PIN-locked, no accounts, no servers.">
+<meta name="theme-color" content="#0B1220">
+<meta property="og:title" content="Planner Pro — an offline planner for day, week and year">
+<meta property="og:description" content="A planner that behaves like a tool, not a website. Works offline, stores everything on your device, 120 KB, no dependencies.">
+<meta property="og:image" content="docs/screenshots/today-desktop.png">
+<meta property="og:type" content="website">
+<link rel="icon" href="app/assets/img/favicon.svg" type="image/svg+xml">
+<style>
+  :root {
+    --bg: #080D18;
+    --bg-2: #0B1220;
+    --surface: #111A2B;
+    --surface-2: #162034;
+    --line: #223049;
+    --text: #EDF1F9;
+    --text-2: #A4B3CB;
+    --text-3: #6F809B;
+    --violet: #8B5CF6;
+    --cyan: #22D3EE;
+    --green: #34D399;
+    --r: 14px;
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --max: 1160px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
+  body {
+    font-family: var(--font); background: var(--bg); color: var(--text);
+    font-size: 16px; line-height: 1.6; -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+  a { color: var(--cyan); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  img { max-width: 100%; display: block; }
+  .wrap { width: 100%; max-width: var(--max); margin: 0 auto; padding: 0 24px; }
+  .eyebrow {
+    font-size: 11.5px; font-weight: 700; letter-spacing: .14em;
+    text-transform: uppercase; color: var(--text-3);
+  }
+  h1, h2, h3 { letter-spacing: -.025em; line-height: 1.12; font-weight: 700; }
+  h2 { font-size: clamp(26px, 3vw, 38px); }
+  h3 { font-size: 16.5px; letter-spacing: -.01em; }
+  p { color: var(--text-2); }
+  .lead { font-size: clamp(16px, 1.4vw, 19px); color: var(--text-2); }
+
+  /* ---------- nav ---------- */
+  nav {
+    position: sticky; top: 0; z-index: 50;
+    backdrop-filter: blur(14px) saturate(1.3);
+    background: rgba(8, 13, 24, .78);
+    border-bottom: 1px solid var(--line);
+  }
+  .nav-in { display: flex; align-items: center; gap: 24px; height: 64px; }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; letter-spacing: -.02em; color: var(--text); }
+  .brand:hover { text-decoration: none; }
+  .mark {
+    width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center;
+    background: linear-gradient(140deg, var(--violet), var(--cyan));
+    color: #fff; font-weight: 800; font-size: 15px;
+  }
+  .nav-links { display: flex; gap: 22px; margin-left: auto; align-items: center; }
+  .nav-links a { color: var(--text-2); font-size: 14px; font-weight: 500; }
+  .nav-links a:hover { color: var(--text); text-decoration: none; }
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    height: 42px; padding: 0 18px; border-radius: 10px;
+    font-size: 14px; font-weight: 650; letter-spacing: -.005em;
+    background: var(--violet); color: #fff; border: 1px solid transparent;
+    transition: transform .08s, filter .15s, background .15s;
+    white-space: nowrap;
+  }
+  .btn:hover { filter: brightness(1.1); text-decoration: none; }
+  .btn:active { transform: translateY(1px); }
+  .btn-ghost { background: var(--surface); color: var(--text); border-color: var(--line); }
+  .btn-ghost:hover { background: var(--surface-2); border-color: #2C3D5C; }
+  .btn-sm { height: 36px; padding: 0 14px; font-size: 13px; }
+  .nav-cta { display: flex; gap: 8px; align-items: center; }
+
+  /* ---------- hero ---------- */
+  header.hero {
+    position: relative; padding: 76px 0 40px; overflow: hidden;
+  }
+  header.hero::before {
+    content: ""; position: absolute; inset: -30% 20% auto 20%; height: 620px;
+    background: radial-gradient(closest-side, rgba(139, 92, 246, .22), transparent 70%);
+    filter: blur(10px); pointer-events: none;
+  }
+  header.hero::after {
+    content: ""; position: absolute; inset: 0; pointer-events: none;
+    background-image: linear-gradient(rgba(255,255,255,.028) 1px, transparent 1px),
+                      linear-gradient(90deg, rgba(255,255,255,.028) 1px, transparent 1px);
+    background-size: 56px 56px;
+    mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, #000 30%, transparent 75%);
+    -webkit-mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, #000 30%, transparent 75%);
+  }
+  .hero-in { position: relative; z-index: 1; text-align: center; }
+  .pill {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 6px 12px; border-radius: 30px;
+    border: 1px solid var(--line); background: rgba(17, 26, 43, .7);
+    font-size: 12px; color: var(--text-2); font-weight: 600;
+  }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); box-shadow: 0 0 10px var(--green); }
+  h1 {
+    font-size: clamp(34px, 5.4vw, 64px); margin: 22px auto 0; max-width: 19ch;
+    background: linear-gradient(180deg, #fff 30%, #B9C6DC);
+    -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  .hero p.lead { max-width: 60ch; margin: 20px auto 0; }
+  .hero-cta { display: flex; gap: 12px; justify-content: center; margin-top: 30px; flex-wrap: wrap; }
+  .hero-meta {
+    display: flex; gap: 22px; justify-content: center; flex-wrap: wrap;
+    margin-top: 26px; font-size: 12.5px; color: var(--text-3);
+  }
+  .hero-meta span { display: inline-flex; align-items: center; gap: 6px; }
+  .tick { color: var(--green); font-weight: 800; }
+
+  /* ---------- screenshot frame ---------- */
+  .shot-frame {
+    margin: 46px auto 0; max-width: 1080px;
+    border: 1px solid var(--line); border-radius: 16px; overflow: hidden;
+    background: var(--surface); box-shadow: 0 40px 80px -40px rgba(0,0,0,.9), 0 0 0 1px rgba(255,255,255,.03) inset;
+  }
+  .shot-bar {
+    display: flex; align-items: center; gap: 7px; padding: 11px 14px;
+    border-bottom: 1px solid var(--line); background: var(--bg-2);
+  }
+  .shot-bar i { width: 10px; height: 10px; border-radius: 50%; background: #2C3A55; display: block; }
+  .shot-bar .url {
+    margin-left: 10px; font-family: var(--mono); font-size: 11px; color: var(--text-3);
+    background: var(--surface); border: 1px solid var(--line); border-radius: 20px; padding: 3px 12px;
+  }
+  .shot-frame img { width: 100%; height: auto; }
+
+  /* ---------- sections ---------- */
+  section { padding: 84px 0; }
+  .section-head { max-width: 66ch; }
+  .section-head h2 { margin-top: 12px; }
+  .section-head p { margin-top: 14px; }
+  .center { text-align: center; margin-left: auto; margin-right: auto; }
+
+  .three { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-top: 44px; }
+  .card {
+    background: var(--surface); border: 1px solid var(--line); border-radius: var(--r);
+    padding: 22px; display: grid; gap: 10px; align-content: start;
+  }
+  .card h3 { color: var(--text); }
+  .card p { font-size: 14.5px; }
+  .icon {
+    width: 34px; height: 34px; border-radius: 9px; display: grid; place-items: center;
+    background: rgba(139, 92, 246, .14); color: var(--violet);
+    border: 1px solid rgba(139, 92, 246, .25); margin-bottom: 4px;
+  }
+  .icon svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+
+  .features { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 44px; }
+  .feature {
+    background: linear-gradient(180deg, var(--surface), var(--bg-2));
+    border: 1px solid var(--line); border-radius: var(--r); padding: 20px;
+  }
+  .feature h3 { font-size: 15px; margin-bottom: 7px; }
+  .feature p { font-size: 13.8px; line-height: 1.55; }
+
+  /* gallery */
+  .gallery { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-top: 40px; }
+  figure { border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; background: var(--surface); }
+  figure img { width: 100%; }
+  figcaption { padding: 11px 14px; font-size: 12.5px; color: var(--text-3); border-top: 1px solid var(--line); }
+  .phones { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-top: 18px; }
+  .phones figure { background: var(--bg-2); }
+  .phones img { width: 100%; }
+
+  /* install */
+  .install-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-top: 40px; }
+  .install {
+    background: var(--surface); border: 1px solid var(--line); border-radius: var(--r);
+    padding: 20px; display: grid; gap: 8px; align-content: start;
+  }
+  .install .tag { font-family: var(--mono); font-size: 10.5px; color: var(--text-3); letter-spacing: .06em; text-transform: uppercase; }
+  .install h3 { font-size: 15px; }
+  .install p { font-size: 13px; }
+  .install a { font-size: 13px; font-weight: 600; }
+
+  /* privacy band */
+  .band {
+    border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);
+    background: linear-gradient(180deg, var(--bg-2), var(--bg));
+  }
+  .band-in { display: grid; grid-template-columns: 1.1fr .9fr; gap: 48px; align-items: center; }
+  .band ul { list-style: none; display: grid; gap: 12px; margin-top: 8px; }
+  .band li { display: grid; grid-template-columns: 22px 1fr; gap: 10px; font-size: 14.5px; color: var(--text-2); }
+  .band li b { color: var(--text); font-weight: 600; }
+
+  /* author */
+  .author { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 40px; }
+  .author .card { padding: 26px; }
+
+  /* footer */
+  footer { border-top: 1px solid var(--line); padding: 44px 0 60px; background: var(--bg-2); }
+  .foot { display: flex; justify-content: space-between; gap: 30px; flex-wrap: wrap; align-items: flex-start; }
+  .foot-links { display: flex; gap: 26px; flex-wrap: wrap; font-size: 13.5px; }
+  .foot-links a { color: var(--text-2); }
+  .fine { font-size: 12px; color: var(--text-3); margin-top: 22px; max-width: 78ch; }
+
+  /* responsive */
+  @media (max-width: 980px) {
+    .three, .features { grid-template-columns: 1fr 1fr; }
+    .install-grid { grid-template-columns: 1fr 1fr; }
+    .band-in, .author { grid-template-columns: 1fr; gap: 26px; }
+  }
+  @media (max-width: 700px) {
+    .nav-links { display: none; }
+    .nav-in { height: 58px; gap: 12px; }
+    .nav-cta .btn-ghost { display: none; }
+    section { padding: 60px 0; }
+    .three, .features, .gallery, .phones, .install-grid { grid-template-columns: 1fr; }
+    .phones { grid-template-columns: 1fr 1fr; }
+    .hero { padding-top: 52px; }
+    .shot-frame { margin-top: 32px; border-radius: 12px; }
+    .hero-meta { gap: 12px; font-size: 11.5px; }
+    .btn { height: 44px; }
+  }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } * { transition: none !important; } }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="wrap nav-in">
+    <a class="brand" href="./"><span class="mark">P</span> Planner&nbsp;Pro</a>
+    <div class="nav-links">
+      <a href="#features">Features</a>
+      <a href="#screens">Screenshots</a>
+      <a href="#install">Install</a>
+      <a href="#privacy">Privacy</a>
+      <a href="https://github.com/drsamonline/planner-pro">GitHub</a>
+    </div>
+    <div class="nav-cta">
+      <a class="btn btn-ghost btn-sm" href="https://github.com/drsamonline/planner-pro/releases/latest">Download</a>
+      <a class="btn btn-sm" href="app/">Open app</a>
+    </div>
+  </div>
+</nav>
+
+<header class="hero">
+  <div class="wrap hero-in">
+    <span class="pill"><span class="dot"></span> v14.0.0 · works offline · no account needed</span>
+    <h1>A planner that behaves like a tool, not a website.</h1>
+    <p class="lead">Day, week, month and year planning in one quiet screen. Opens instantly,
+      stores everything on your device, and never asks you to sign in.</p>
+
+    <div class="hero-cta">
+      <a class="btn" href="app/">Open the planner →</a>
+      <a class="btn btn-ghost" href="https://github.com/drsamonline/planner-pro">View source</a>
+      <a class="btn btn-ghost" href="https://github.com/sponsors/drsamonline">Sponsor</a>
+    </div>
+
+    <div class="hero-meta">
+      <span><b class="tick">✓</b> 100% offline</span>
+      <span><b class="tick">✓</b> no tracking</span>
+      <span><b class="tick">✓</b> ~120 KB</span>
+      <span><b class="tick">✓</b> zero dependencies</span>
+      <span><b class="tick">✓</b> multi-profile, PIN locked</span>
+    </div>
+
+    <div class="shot-frame">
+      <div class="shot-bar"><i></i><i></i><i></i><span class="url">planner-pro / today</span></div>
+      <img src="docs/screenshots/today-desktop.png" alt="Planner Pro today view showing tasks, schedule, streaks and a brain dump" width="1440" height="900">
+    </div>
+  </div>
+</header>
+
+<section id="why">
+  <div class="wrap">
+    <div class="section-head center">
+      <span class="eyebrow">Why it exists</span>
+      <h2>Most planners are websites wearing a calendar.</h2>
+      <p class="lead">Planner Pro is a small application you own. It loads before you finish
+        deciding to open it, and it still works when the network doesn't.</p>
+    </div>
+
+    <div class="three">
+      <div class="card">
+        <span class="icon"><svg viewBox="0 0 24 24"><path d="M13 2L4.5 13.5H11l-1 8.5 8.5-11.5H12z"/></svg></span>
+        <h3>Fast by construction</h3>
+        <p>No framework, no CDN, no web fonts. One CSS file, eleven small scripts, and a
+          single render pass per view. There is nothing to hydrate.</p>
+      </div>
+      <div class="card">
+        <span class="icon"><svg viewBox="0 0 24 24"><rect x="4" y="10.5" width="16" height="10" rx="2.5"/><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5"/></svg></span>
+        <h3>Yours to keep</h3>
+        <p>One JSON document in your browser, exported with a click. No account, no sync
+          service, no terms of service standing between you and your own week.</p>
+      </div>
+      <div class="card">
+        <span class="icon"><svg viewBox="0 0 24 24"><rect x="2.5" y="4" width="19" height="13" rx="2"/><path d="M8 20.5h8M12 17v3.5"/></svg></span>
+        <h3>Fits the screen you have</h3>
+        <p>Three columns on a desktop, an icon rail on a tablet, a bottom bar on a phone.
+          Tested down to 320 px wide with no sideways scrolling.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="features" style="background:linear-gradient(180deg, var(--bg-2), var(--bg)); border-top:1px solid var(--line); border-bottom:1px solid var(--line);">
+  <div class="wrap">
+    <div class="section-head center">
+      <span class="eyebrow">What's inside</span>
+      <h2>Small surface, no dead ends.</h2>
+      <p class="lead">Every screen does one job. Nothing is a placeholder.</p>
+    </div>
+
+    <div class="features">
+      <div class="feature">
+        <h3>Today, at a glance</h3>
+        <p>Completion ring, streak, next time block and open-task count — plus the one line
+          that says what would make today count.</p>
+      </div>
+      <div class="feature">
+        <h3>Time blocks that know the time</h3>
+        <p>The block you are inside right now is highlighted, so the day view reads like a
+          schedule instead of a list.</p>
+      </div>
+      <div class="feature">
+        <h3>Real weeks</h3>
+        <p>A weekly plan belongs to <em>that</em> week. Navigate back and it is still there;
+          next week starts clean instead of repeating last week forever.</p>
+      </div>
+      <div class="feature">
+        <h3>Year, month by month</h3>
+        <p>Twelve month cards with goals and real completion progress, plus a year theme and
+          the goals that outlive a Tuesday.</p>
+      </div>
+      <div class="feature">
+        <h3>Command palette</h3>
+        <p><kbd>Ctrl</kbd>/<kbd>⌘</kbd> + <kbd>K</kbd> searches every task, note, block and
+          goal you have ever written — and runs commands while it's there.</p>
+      </div>
+      <div class="feature">
+        <h3>Carry-over, not guilt</h3>
+        <p>Unfinished tasks move to today in one tap, with a count of what's waiting. Nothing
+          silently rots at the bottom of yesterday.</p>
+      </div>
+      <div class="feature">
+        <h3>Archive instead of delete</h3>
+        <p>Finished years move aside automatically. Restore one, export it, or remove it —
+          the planner stays light without losing history.</p>
+      </div>
+      <div class="feature">
+        <h3>Four themes, done properly</h3>
+        <p>Midnight, Ocean, Light and System — each with its own contrast-correct palette,
+          not an inverted filter.</p>
+      </div>
+      <div class="feature">
+        <h3>Profiles with a PIN</h3>
+        <p>Separate planners on one device, each behind a 4-digit PIN that is asked for on
+          launch. No email, no recovery, nothing to leak.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="screens">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="eyebrow">Screenshots</span>
+      <h2>The whole app, nothing hidden.</h2>
+      <p>These are real screenshots of the shipped build, captured by the test suite's
+        browser — not mockups.</p>
+    </div>
+
+    <div class="gallery">
+      <figure><img src="docs/screenshots/day-desktop.png" alt="Day view"><figcaption>Day — intention, to-do, schedule, notes</figcaption></figure>
+      <figure><img src="docs/screenshots/week-desktop.png" alt="Week view"><figcaption>Week — focus, goals, seven day columns</figcaption></figure>
+      <figure><img src="docs/screenshots/year-desktop.png" alt="Year view"><figcaption>Year — theme, goals, twelve months</figcaption></figure>
+      <figure><img src="docs/screenshots/palette-desktop.png" alt="Command palette"><figcaption>Command palette — search everything, run anything</figcaption></figure>
+    </div>
+
+    <div class="phones">
+      <figure><img src="docs/screenshots/today-mobile.png" alt="Mobile today view"><figcaption>Phone — Today</figcaption></figure>
+      <figure><img src="docs/screenshots/day-mobile.png" alt="Mobile day view"><figcaption>Phone — Day</figcaption></figure>
+      <figure><img src="docs/screenshots/today-light.png" alt="Light theme"><figcaption>Light theme</figcaption></figure>
+    </div>
+  </div>
+</section>
+
+<section id="install" style="background:var(--bg-2); border-top:1px solid var(--line); border-bottom:1px solid var(--line);">
+  <div class="wrap">
+    <div class="section-head center">
+      <span class="eyebrow">Install</span>
+      <h2>Four ways in. Pick the one that suits your desk.</h2>
+      <p class="lead">All of them run the same build and keep data on your device.</p>
+    </div>
+
+    <div class="install-grid">
+      <div class="install">
+        <span class="tag">Any browser</span>
+        <h3>Use it online</h3>
+        <p>Nothing to install. Open the app, create a profile, start planning.</p>
+        <a href="app/">Open the planner →</a>
+      </div>
+      <div class="install">
+        <span class="tag">Android · iOS</span>
+        <h3>Add to home screen</h3>
+        <p>Chrome: menu → <b>Install app</b>. Safari: Share → <b>Add to Home Screen</b>.
+          Launches full-screen and offline.</p>
+        <a href="app/">Open, then install →</a>
+      </div>
+      <div class="install">
+        <span class="tag">Windows · macOS · Linux</span>
+        <h3>Desktop app</h3>
+        <p>Install from the address bar, or download the release build produced by the
+          Electron workflow.</p>
+        <a href="https://github.com/drsamonline/planner-pro/releases/latest">Get the release →</a>
+      </div>
+      <div class="install">
+        <span class="tag">No browser install</span>
+        <h3>Single HTML file</h3>
+        <p>One portable file — double-click it and the planner opens from your desktop,
+          with no server and no internet.</p>
+        <a href="https://github.com/drsamonline/planner-pro/releases/latest">Download .html →</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="privacy" class="band">
+  <div class="wrap band-in">
+    <div>
+      <span class="eyebrow">Privacy</span>
+      <h2 style="margin-top:12px">Your week is not our data.</h2>
+      <p class="lead" style="margin-top:14px">There is no backend to send anything to. The app
+        makes no network requests once the shell is cached — check the Network tab with the
+        connection off.</p>
+      <ul>
+        <li><b>Local storage only</b><span>One versioned document in your browser, readable and exportable.</span></li>
+        <li><b>No analytics</b><span>No scripts from third parties, no beacons, no crash reporting.</span></li>
+        <li><b>No account</b><span>Profiles are local. A PIN is a lock, not a login — nothing to recover, nothing to leak.</span></li>
+        <li><b>Export anytime</b><span>JSON for backup and restore, Markdown to keep your notes forever.</span></li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>What leaves the device</h3>
+      <p style="font-size:14px">Nothing. The only outbound links are the ones on this page and
+        in the app's About screen.</p>
+      <p style="font-size:13px; color:var(--text-3)">Clearing site data deletes your planner, so
+        export a backup from <b>Settings → Backup</b> now and then. The app reminds you.</p>
+    </div>
+  </div>
+</section>
+
+<section id="author">
+  <div class="wrap">
+    <div class="section-head center">
+      <span class="eyebrow">Made by</span>
+      <h2>Built to run one person's days. Released for anyone who plans.</h2>
+    </div>
+    <div class="author">
+      <div class="card">
+        <div class="brand" style="color:var(--text)"><span class="mark">S</span> Dr. Sohil Momin</div>
+        <p style="margin-top:8px">A doctor who wanted a planner that opens faster than a
+          thought and does not want his data. So he wrote one.</p>
+        <p style="margin-top:4px"><a href="https://github.com/drsamonline">github.com/drsamonline</a></p>
+      </div>
+      <div class="card">
+        <h3>Sponsor the work</h3>
+        <p style="margin-top:6px">Planner Pro is free for personal use and built on unpaid
+          time. Sponsorship pays for release builds and keeps the licence non-commercial.</p>
+        <p style="margin-top:10px"><a class="btn btn-ghost btn-sm" href="https://github.com/sponsors/drsamonline">Become a sponsor ♥</a></p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div class="foot">
+      <div>
+        <a class="brand" href="./"><span class="mark">P</span> Planner&nbsp;Pro</a>
+        <p class="fine">Offline day · week · month · year planner. v14.0.0.</p>
+      </div>
+      <div class="foot-links">
+        <a href="app/">Open app</a>
+        <a href="https://github.com/drsamonline/planner-pro">Source</a>
+        <a href="https://github.com/drsamonline/planner-pro/releases/latest">Releases</a>
+        <a href="https://github.com/drsamonline/planner-pro/blob/main/ENHANCEMENTS.md">Roadmap</a>
+        <a href="https://github.com/drsamonline/planner-pro/blob/main/LICENSE">Licence</a>
+        <a href="https://github.com/drsamonline/planner-pro/blob/main/ATTRIBUTION.md">Attribution</a>
+        <a href="https://github.com/sponsors/drsamonline">Sponsor</a>
+      </div>
+    </div>
+    <p class="fine">
+      <b>Licence:</b> PolyForm Noncommercial 1.0.0 — free for personal, academic, hobby,
+      charitable and government use; commercial use requires a written licence from the author.
+      Planning methods referenced in the app are credited to their authors in
+      <a href="https://github.com/drsamonline/planner-pro/blob/main/ATTRIBUTION.md">ATTRIBUTION.md</a>;
+      no text from those books is reproduced.
+      <br><br>
+      <b>Not a medical device.</b> Planner Pro is a personal productivity tool. It does not give
+      medical advice and must not be used to manage patient care.
+    </p>
+  </div>
+</footer>
+
+</body>
+</html>

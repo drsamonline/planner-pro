@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="midnight">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="description" content="Planner Pro — an offline-first personal planner for day, week, month and year. Multi-profile, PIN locked, no accounts, no servers.">
+<meta name="theme-color" content="#0F172A">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Planner Pro">
+<title>Planner Pro — offline day, week &amp; year planner</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="assets/img/icon-192.png">
+<link rel="stylesheet" href="assets/css/app.css">
+</head>
+<body data-theme="midnight">
+
+<!-- ============ icon sprite ============ -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <symbol id="i-today" viewBox="0 0 24 24"><path d="M12 3v2m0 14v2M3 12h2m14 0h2M5.6 5.6l1.4 1.4m10 10l1.4 1.4m0-12.8l-1.4 1.4m-10 10L5.6 18.4"/><circle cx="12" cy="12" r="3.6"/></symbol>
+    <symbol id="i-day" viewBox="0 0 24 24"><rect x="3" y="4.5" width="18" height="16" rx="3"/><path d="M3 9.5h18M8 3v3m8-3v3"/><path d="M8 13h3v3H8z"/></symbol>
+    <symbol id="i-week" viewBox="0 0 24 24"><rect x="3" y="4.5" width="18" height="16" rx="3"/><path d="M3 9.5h18M9 9.5v11M15 9.5v11"/></symbol>
+    <symbol id="i-year" viewBox="0 0 24 24"><rect x="3" y="4.5" width="18" height="16" rx="3"/><path d="M3 9.5h18M3 14.5h18M9 4.5v16M15 4.5v16"/></symbol>
+    <symbol id="i-archive" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="5" rx="1.5"/><path d="M4.5 9v9.5A1.5 1.5 0 0 0 6 20h12a1.5 1.5 0 0 0 1.5-1.5V9M10 13h4"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></symbol>
+    <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1 2 2 0 1 1-4 0 1.6 1.6 0 0 0-2.7-1.1l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.6 1.6 0 0 0 3 15a2 2 0 1 1 0-4 1.6 1.6 0 0 0 1.1-2.7l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.6 1.6 0 0 0 9.6 4.4a2 2 0 1 1 4 0 1.6 1.6 0 0 0 2.7 1.1l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1A1.6 1.6 0 0 0 20.2 11a2 2 0 1 1 0 4z"/></symbol>
+    <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5m0-8.2v.2"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M4.5 12.5l5 5 10-11"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4.8A.8.8 0 0 1 9.8 4h4.4a.8.8 0 0 1 .8.8V7M6.5 7l.8 12.2a1.8 1.8 0 0 0 1.8 1.8h5.8a1.8 1.8 0 0 0 1.8-1.8L17.5 7"/></symbol>
+    <symbol id="i-left" viewBox="0 0 24 24"><path d="M14.5 6l-6 6 6 6"/></symbol>
+    <symbol id="i-right" viewBox="0 0 24 24"><path d="M9.5 6l6 6-6 6"/></symbol>
+    <symbol id="i-lock" viewBox="0 0 24 24"><rect x="4.5" y="10.5" width="15" height="10" rx="2.5"/><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5"/></symbol>
+    <symbol id="i-theme" viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 9 9 7 7 0 0 1-9-9z"/></symbol>
+    <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v10m0 0l-4-4m4 4l4-4M5 19h14"/></symbol>
+    <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 15V5m0 0l-4 4m4-4l4 4M5 19h14"/></symbol>
+    <symbol id="i-print" viewBox="0 0 24 24"><path d="M7 9V4h10v5M7 18H5a1 1 0 0 1-1-1v-6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v6a1 1 0 0 1-1 1h-2"/><rect x="7" y="14" width="10" height="6" rx="1"/></symbol>
+    <symbol id="i-carry" viewBox="0 0 24 24"><path d="M4 8h11a4 4 0 0 1 0 8H9m0 0l3-3m-3 3l3 3"/></symbol>
+    <symbol id="i-fire" viewBox="0 0 24 24"><path d="M12 3s5 4.5 5 9a5 5 0 0 1-10 0c0-2 1-3.5 1-3.5S9 11 10.5 11c0-3 1.5-5 1.5-8z"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+    <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
+    <symbol id="i-star" viewBox="0 0 24 24"><path d="M12 4l2.4 5 5.6.8-4 4 1 5.6-5-2.7-5 2.7 1-5.6-4-4 5.6-.8z"/></symbol>
+    <symbol id="i-note" viewBox="0 0 24 24"><path d="M6 3.5h9L19 7.5v13H6z"/><path d="M15 3.5v4h4M9 12h6M9 16h6"/></symbol>
+  </defs>
+</svg>
+
+<!-- ============ lock screen ============ -->
+<div class="lock" id="lockScreen">
+  <div class="lock-card">
+    <div class="brand brand-lg">
+      <span class="brand-mark">P</span>
+      <div>
+        <strong>Planner Pro</strong>
+        <small>Offline day · week · year planner</small>
+      </div>
+    </div>
+
+    <div id="lockBody">
+      <p class="lock-hint" id="lockHint">Choose a profile</p>
+      <div class="lock-users" id="lockUsers"></div>
+
+      <form class="pin-row" id="pinForm" hidden>
+        <input type="password" id="pinInput" inputmode="numeric" maxlength="4" placeholder="4-digit PIN" autocomplete="off" aria-label="PIN">
+        <button class="btn" type="submit">Unlock</button>
+      </form>
+      <button class="btn btn-ghost btn-block" id="lockBack" hidden type="button">← Other profiles</button>
+
+      <details class="new-user" id="newUserBox">
+        <summary>Create a new profile</summary>
+        <div class="stack">
+          <input type="text" id="newUserName" placeholder="Your name" autocomplete="name">
+          <input type="password" id="newUserPin" inputmode="numeric" maxlength="4" placeholder="Choose a 4-digit PIN" autocomplete="new-password">
+          <button class="btn" type="button" id="createUserBtn">Create profile</button>
+        </div>
+      </details>
+    </div>
+
+    <p class="lock-foot">No accounts. No servers. Everything stays in this browser.</p>
+  </div>
+</div>
+
+<!-- ============ app shell ============ -->
+<div class="app" id="app" hidden>
+  <aside class="rail" id="rail">
+    <div class="brand">
+      <span class="brand-mark">P</span>
+      <div class="brand-text">
+        <strong>Planner&nbsp;Pro</strong>
+        <small id="railSub">v14</small>
+      </div>
+    </div>
+    <nav class="rail-nav" id="railNav" aria-label="Main"></nav>
+    <div class="rail-foot">
+      <button class="user-btn" data-act="account" id="railUser">
+        <span class="avatar" id="railAvatar">S</span>
+        <span class="user-meta"><strong id="railName">—</strong><small id="railSince">—</small></span>
+      </button>
+    </div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <div class="topbar-lead">
+        <h1 id="pageTitle">Today</h1>
+        <p id="pageSub" class="page-sub"></p>
+      </div>
+      <div class="topbar-actions">
+        <button class="btn btn-ghost btn-search" data-act="palette" title="Search &amp; commands (Ctrl/⌘ K)">
+          <svg class="i"><use href="#i-search"/></svg><span class="btn-label">Search</span><kbd class="kbd-hint">⌘K</kbd>
+        </button>
+        <button class="icon-btn" data-act="cycle-theme" title="Cycle theme" aria-label="Cycle theme"><svg class="i"><use href="#i-theme"/></svg></button>
+        <button class="icon-btn" data-act="lock" title="Lock" aria-label="Lock app"><svg class="i"><use href="#i-lock"/></svg></button>
+      </div>
+    </header>
+
+    <main class="view" id="view" tabindex="-1"></main>
+  </div>
+
+  <nav class="tabbar" id="tabbar" aria-label="Main"></nav>
+  <button class="fab" data-act="quick-add" aria-label="Quick add"><svg class="i"><use href="#i-plus"/></svg></button>
+</div>
+
+<!-- ============ command palette ============ -->
+<div class="scrim" id="palette" hidden>
+  <div class="palette" role="dialog" aria-modal="true" aria-label="Command palette">
+    <div class="palette-input">
+      <svg class="i"><use href="#i-search"/></svg>
+      <input type="text" id="paletteInput" placeholder="Search tasks, notes, or type a command…" autocomplete="off" spellcheck="false">
+      <kbd class="kbd-hint">esc</kbd>
+    </div>
+    <div class="palette-list" id="paletteList"></div>
+  </div>
+</div>
+
+<!-- ============ modal ============ -->
+<div class="scrim" id="modal" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <h2 id="modalTitle">Title</h2>
+    <div id="modalBody"></div>
+    <div class="modal-actions" id="modalActions"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<div class="save-dot" id="saveDot" title="All changes saved">Saved</div>
+
+<script src="assets/js/date.js"></script>
+<script src="assets/js/store.js"></script>
+<script src="assets/js/ui.js"></script>
+<script src="assets/js/views/parts.js"></script>
+<script src="assets/js/views/today.js"></script>
+<script src="assets/js/views/day.js"></script>
+<script src="assets/js/views/week.js"></script>
+<script src="assets/js/views/year.js"></script>
+<script src="assets/js/views/archive.js"></script>
+<script src="assets/js/views/search.js"></script>
+<script src="assets/js/views/settings.js"></script>
+<script src="assets/js/views/about.js"></script>
+<script src="assets/js/app.js"></script>
+</body>
+</html>
