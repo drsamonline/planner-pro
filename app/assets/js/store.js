@@ -35,6 +35,7 @@
       days: {}, weeks: {}, months: {}, years: {}, archives: {},
       trash: [], lastExportAt: 0, backupSnoozeUntil: 0,
       recurring: [], templates: [], capacityMin: 480,
+      reviewDay: 0, reviewSnoozeUntil: 0,
       settings: { carryOver: true, autoArchive: true, requirePin: true }
     };
   }
@@ -108,6 +109,8 @@
       if (!Array.isArray(u.recurring)) u.recurring = [];
       if (!Array.isArray(u.templates)) u.templates = [];
       if (typeof u.capacityMin !== 'number' || u.capacityMin <= 0) u.capacityMin = 480;
+      if (typeof u.reviewDay !== 'number') u.reviewDay = 0;
+      if (typeof u.reviewSnoozeUntil !== 'number') u.reviewSnoozeUntil = 0;
       if (u.pinHash === undefined) u.pinHash = null;
       if (u.pinSalt === undefined) u.pinSalt = null;
       if (u.pinIter === undefined) u.pinIter = 0;
@@ -763,6 +766,74 @@
     return days.map(function (d) { return names[d]; }).join(', ');
   }
 
+  /* ---------------- reviews ----------------
+     A weekly review lives on the week object, a daily one on the day. Both are
+     plain data, so they export and archive with everything else. */
+
+  function reviewDay() {
+    var u = user();
+    if (!u) return -1;
+    return (typeof u.reviewDay === 'number') ? u.reviewDay : 0;
+  }
+
+  function setReviewDay(index) {
+    var u = user();
+    if (!u) return;
+    u.reviewDay = Number(index);
+    saveNow();
+  }
+
+  /** Is a weekly review waiting today? */
+  function reviewDue() {
+    var u = user();
+    if (!u) return null;
+    var idx = reviewDay();
+    if (idx < 0) return null;
+    var today = global.DateUtil.todayKey();
+    if (global.DateUtil.weekday(today) !== idx) return null;
+    if (u.reviewSnoozeUntil && u.reviewSnoozeUntil >= today) return null;
+    var wk = global.DateUtil.weekStartKey(today, u.weekStart);
+    var w = week(wk, true);
+    if (w.review && w.review.at) return null;
+    return { weekKey: wk };
+  }
+
+  function snoozeReview() {
+    var u = user();
+    if (!u) return;
+    u.reviewSnoozeUntil = global.DateUtil.addDays(global.DateUtil.todayKey(), 1);
+    saveNow();
+  }
+
+  /** Plain-text summary of a week, used to seed the review. */
+  function weekSummary(weekKey) {
+    var dates = global.DateUtil.weekDates(weekKey);
+    var done = [];
+    var total = 0, completed = 0, planned = 0;
+    dates.forEach(function (k) {
+      var d = peekDay(k);
+      if (!d) return;
+      var counted = false;
+      (d.todos || []).forEach(function (t) {
+        total++;
+        if (t.done) { completed++; done.push(t.text); }
+      });
+      if ((d.todos || []).length) counted = true;
+      if (counted) planned++;
+    });
+    var w = week(weekKey, true);
+    return {
+      weekKey: weekKey,
+      daysPlanned: planned,
+      tasksDone: completed,
+      tasksTotal: total,
+      completedText: done,
+      goalsDone: (w.todos || []).filter(function (t) { return t.done; }).length,
+      goalsTotal: (w.todos || []).length,
+      focus: w.focus || ''
+    };
+  }
+
   /* ---------------- templates ---------------- */
 
   function templates() {
@@ -972,6 +1043,8 @@
     recurring: recurring, addRecurring: addRecurring, removeRecurring: removeRecurring,
     toggleRecurring: toggleRecurring, ensureRecurring: ensureRecurring, repeatLabel: repeatLabel,
     templates: templates, addTemplate: addTemplate, removeTemplate: removeTemplate,
+    reviewDay: reviewDay, setReviewDay: setReviewDay, reviewDue: reviewDue,
+    snoozeReview: snoozeReview, weekSummary: weekSummary,
     capacity: capacity, setCapacity: setCapacity, dayLoad: dayLoad,
     heatmap: heatmap, bestStreak: bestStreak, tagIndex: tagIndex, trend: trend, insights: insights,
     markExported: markExported, backupStatus: backupStatus, snoozeBackup: snoozeBackup,

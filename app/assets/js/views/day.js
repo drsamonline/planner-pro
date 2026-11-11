@@ -77,9 +77,12 @@
             }).map(function (b) { return Parts.blockRow(b, key, false); }).join('') + '</div>'
           : UI.empty('clock', 'Blocks turn a to-do list into a plan.')) +
         '</div>' +
-        '<div class="card"><div class="card-head"><h2>' + icon('note') + 'Notes &amp; reflection</h2></div>' +
-        '<textarea data-bind="day-notes" data-key="' + key + '" placeholder="How did it go? What will you do differently?" style="min-height:150px">' +
-        esc(d.notes || '') + '</textarea></div>' +
+        '<div class="card"><div class="card-head"><h2>' + icon('note') + 'Notes &amp; reflection</h2>' +
+        '<button class="btn btn-quiet btn-sm" data-act="day-review" data-key="' + key + '">' +
+        (d.review && d.review.at ? 'Edit review' : 'Review day') + '</button></div>' +
+        '<textarea data-bind="day-notes" data-key="' + key + '" placeholder="How did it go? What will you do differently?" style="min-height:120px">' +
+        esc(d.notes || '') + '</textarea>' +
+        Parts.reviewBody(d.review, 'day') + '</div>' +
         '</div>';
 
       h += '</div>';

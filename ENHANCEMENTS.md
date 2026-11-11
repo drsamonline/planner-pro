@@ -132,6 +132,7 @@ Effort is honest wall-clock time for one developer who already knows the code:
 > **14.4.0 — B3 (tag filter), B6 (heatmap), B7 (stats/Insights).**
 > **14.5.0 — B8 (encrypted backup), B12 (bulk actions).**
 > **14.6.0 — B18 (PIN hashing + attempt-safe verification).**
+> **14.7.0 — B9 (weekly review), B10 (end-of-day review).**
 
 | # | Enhancement | Why it matters | Effort | Weight |
 |---|---|---|---|---|
@@ -160,8 +161,8 @@ Effort is honest wall-clock time for one developer who already knows the code:
 | B6 | ✅ **shipped in 14.4** — **Year heatmap** — GitHub-style grid of completion intensity | The one chart that makes a year feel real | M | ~4 KB |
 | B7 | ✅ **shipped in 14.4** — **Stats view** — 30/90-day completion trend, best streak, busiest weekday | Turns stored data into feedback | M | ~8 KB |
 | B8 | ✅ **shipped in 14.5** — **Encrypted backup** — AES-GCM via WebCrypto with a passphrase, `.planner` file | Makes it safe to keep the backup in Drive/Dropbox | M | ~6 KB |
-| B9 | **Weekly review mode** — a guided 5-question card on a chosen weekday, answers saved into that week | The habit that makes the rest work | M | ~5 KB |
-| B10 | **End-of-day review** — three prompts appended to the day's notes | Cheap reflection, no new screen | S | ~2 KB |
+| B9 | ✅ **shipped in 14.7** — **Weekly review mode** — a guided 5-question card on a chosen weekday, answers saved into that week | The habit that makes the rest work | M | ~5 KB |
+| B10 | ✅ **shipped in 14.7** — **End-of-day review** — three prompts appended to the day's notes | Cheap reflection, no new screen | S | ~2 KB |
 | B11 | **Mini calendar** in the sidebar with dot density per day | Orientation: "where am I, what's coming" | M | ~5 KB |
 | B12 | ✅ **shipped in 14.5** — **Bulk actions** — select several tasks, move to another day / delete | Fixes the "20 stale tasks" cleanup chore | M | ~6 KB |
 | B13 | **Focus timer** on the current block (Pomodoro, no notifications) | Time-boxing without leaving the app | S–M | ~4 KB |
@@ -247,8 +248,8 @@ duplicate day (A10), keyboard-navigable list (A11), minified build.
 
 **v14.2 — "routines"** — ✅ shipped: drag reorder, keyboard list, natural-language
 quick add, copy day, minified build. **14.3.0** — ✅ recurring tasks (B1),
-templates (B2), estimates + capacity (B5). Still open: weekly review (B9),
-Markdown vault export (B14), share target (B16), swipe (B17), focus timer (B13).
+templates (B2), estimates + capacity (B5). Still open: Markdown vault export (B14),
+share target (B16), swipe (B17), focus timer (B13), subtasks (B4).
 
 **v15 — "insight"**: year heatmap, stats view, encrypted backups, Markdown vault
 export, IndexedDB + compression, i18n groundwork.

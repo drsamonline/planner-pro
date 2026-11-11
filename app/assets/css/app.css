@@ -439,6 +439,19 @@ label { font-size: 12px; color: var(--text-2); font-weight: 550; display: block;
   border-radius: var(--r-sm); font-size: 13.5px;
 }
 
+/* ---------- reviews ---------- */
+.review-stats {
+  display: flex; gap: 14px; flex-wrap: wrap;
+  padding: 9px 11px; border-radius: var(--r-sm);
+  background: var(--surface-2); border: 1px solid var(--line);
+  color: var(--text-2);
+}
+.review-stats strong { color: var(--text); font-variant-numeric: tabular-nums; }
+.review-body { display: grid; gap: 12px; }
+.review-q { display: grid; gap: 3px; }
+.review-q p { margin: 0; color: var(--text-2); }
+.review-q .eyebrow { color: var(--text-3); }
+
 /* ---------- bulk selection ---------- */
 .select-box {
   width: 16px; height: 16px; flex: none; border-radius: 4px;

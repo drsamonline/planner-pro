@@ -42,6 +42,13 @@
         }).join('') + '</select></div>' +
         '<div class="field"><label for="setCapacity">Daily capacity (minutes)</label>' +
         '<input type="number" id="setCapacity" min="30" max="1440" step="30" value="' + (u.capacityMin || 480) + '" data-bind="capacity"></div>' +
+        '<div class="field"><label for="setReview">Weekly review on</label>' +
+        '<select id="setReview" data-bind="review-day">' +
+        '<option value="-1"' + (u.reviewDay === -1 ? ' selected' : '') + '>Off</option>' +
+        D.DAYS.map(function (name, i) {
+          return '<option value="' + i + '"' + (u.reviewDay === i ? ' selected' : '') + '>' + esc(name) + '</option>';
+        }).join('') +
+        '</select></div>' +
         '<div class="field"><label for="setWeekStart">Week starts on</label>' +
         '<select id="setWeekStart" data-bind="week-start">' +
         '<option value="1"' + (u.weekStart === 1 ? ' selected' : '') + '>Monday</option>' +

@@ -4,6 +4,26 @@ All notable changes to Planner Pro. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [semantic versioning](https://semver.org/).
 
+## [14.7.0] — 2026-11-11
+
+Closing the loop. A planner that only pushes work forward eventually becomes a
+list of guilt; this release gives the week and the day an ending.
+
+### Added
+
+- **Weekly review.** A guided review on the weekday you choose (Settings → "Weekly review on", off by default Sunday). It opens with a real summary — tasks done, days planned, weekly goals met — and four questions: what actually got done (pre-seeded with the week's completed tasks), what didn't happen and is still worth doing, what you will change, and the one thing for next week. That last answer becomes next week's focus if it is empty.
+- **Review nudge.** On the review day, Today shows a one-line prompt with "Review the week" and a "Later" that hides it until tomorrow.
+- **End-of-day review.** Three prompts on the Day view — what went well, what drained you, one thing for tomorrow. The last one creates tomorrow's first task if it isn't already there.
+- **Reviews are data, not text.** They live on the week and the day objects, render as a read-only block with an Edit button, survive archiving, and appear in both Markdown exports.
+
+### Changed
+
+- The Week view gained a Review button in its header and a "Week in review" card that shows either the answers or a prompt to start.
+
+### Verified
+
+- The end-to-end suite grew from 94 to **99 checks**: due detection on the configured weekday, the summary strip, saving a review, the next-week focus handoff, the review rendering on the week view, the day review seeding tomorrow's task, and switching reviews off.
+
 ## [14.6.0] — 2026-11-11
 
 The PIN stops being a secret written in the file. Profiles are now keyed by an

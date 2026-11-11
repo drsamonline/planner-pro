@@ -640,6 +640,94 @@
     });
   }
 
+  /* ---------------- reviews ---------------- */
+
+  function actWeekReview(weekKey) {
+    var key = D.isKey(weekKey)
+      ? D.weekStartKey(weekKey, Store.user().weekStart)
+      : D.weekStartKey(D.todayKey(), Store.user().weekStart);
+    var w = Store.week(key, true);
+    var sum = Store.weekSummary(key);
+    var existing = w.review || {};
+    var doneSeed = (existing.done !== undefined)
+      ? existing.done
+      : sum.completedText.slice(0, 25).map(function (t) { return '· ' + t; }).join('\n');
+    var nextWeek = D.addDays(key, 7);
+
+    UI.openModal({
+      title: 'Week in review',
+      body: '<div class="review-stats tiny">' +
+        '<span><strong>' + sum.tasksDone + '</strong> tasks done of ' + sum.tasksTotal + '</span>' +
+        '<span><strong>' + sum.daysPlanned + '</strong>/7 days planned</span>' +
+        '<span><strong>' + sum.goalsDone + '</strong>/' + sum.goalsTotal + ' weekly goals</span>' +
+        '</div>' +
+        '<div class="field" style="margin-top:12px"><label for="rvDone">What actually got done?</label>' +
+        '<textarea id="rvDone" style="min-height:74px">' + esc(doneSeed) + '</textarea></div>' +
+        '<div class="field" style="margin-top:10px"><label for="rvStuck">What did not happen — still worth doing?</label>' +
+        '<textarea id="rvStuck" style="min-height:64px">' + esc(existing.stuck || '') + '</textarea></div>' +
+        '<div class="field" style="margin-top:10px"><label for="rvChange">What will you change next week?</label>' +
+        '<textarea id="rvChange" style="min-height:64px">' + esc(existing.change || '') + '</textarea></div>' +
+        '<div class="field" style="margin-top:10px"><label for="rvFocus">One thing for next week (becomes its focus)</label>' +
+        '<input type="text" id="rvFocus" value="' + esc(existing.focusNext || '') + '" placeholder="If only one thing gets done…"></div>',
+      actions: [
+        { label: 'Cancel', value: null, cls: 'btn-ghost' },
+        {
+          label: 'Save review', value: 'save', cls: 'btn', onClick: function () {
+            w.review = {
+              at: Date.now(),
+              done: $('rvDone').value.trim(),
+              stuck: $('rvStuck').value.trim(),
+              change: $('rvChange').value.trim(),
+              focusNext: $('rvFocus').value.trim()
+            };
+            if (w.review.focusNext) {
+              var nw = Store.week(nextWeek, true);
+              if (!nw.focus) nw.focus = w.review.focusNext;
+            }
+            Store.saveNow();
+            refresh();
+            UI.toast(w.review.focusNext ? 'Reviewed · next week’s focus set' : 'Week reviewed');
+          }
+        }
+      ]
+    });
+  }
+
+  function actDayReview(key) {
+    var k = D.isKey(key) ? key : D.todayKey();
+    var d = Store.day(k, true);
+    var existing = d.review || {};
+    UI.openModal({
+      title: 'Review ' + (D.relative(k) || D.prettyDay(k)),
+      body: '<div class="field"><label for="drWent">What went well?</label>' +
+        '<textarea id="drWent" style="min-height:64px">' + esc(existing.went || '') + '</textarea></div>' +
+        '<div class="field" style="margin-top:10px"><label for="drDrained">What drained you?</label>' +
+        '<textarea id="drDrained" style="min-height:64px">' + esc(existing.drained || '') + '</textarea></div>' +
+        '<div class="field" style="margin-top:10px"><label for="drNext">One thing for tomorrow</label>' +
+        '<input type="text" id="drNext" value="' + esc(existing.next || '') + '" placeholder="Small enough to actually do"></div>',
+      actions: [
+        { label: 'Cancel', value: null, cls: 'btn-ghost' },
+        {
+          label: 'Save', value: 'save', cls: 'btn', onClick: function () {
+            var went = $('drWent').value.trim();
+            var drained = $('drDrained').value.trim();
+            var next = $('drNext').value.trim();
+            if (!went && !drained && !next) { UI.toast('Nothing to save yet'); return false; }
+            d.review = { at: Date.now(), went: went, drained: drained, next: next };
+            if (next) {
+              var tomorrow = Store.day(D.addDays(k, 1), true);
+              var exists = tomorrow.todos.some(function (t) { return t.text.toLowerCase() === next.toLowerCase(); });
+              if (!exists) tomorrow.todos.push({ id: Store.uid(), text: next, done: false });
+            }
+            Store.saveNow();
+            refresh();
+            UI.toast(next ? 'Reviewed · added to tomorrow' : 'Day reviewed');
+          }
+        }
+      ]
+    });
+  }
+
   /* ---------------- bulk selection ---------------- */
 
   var selection = { key: null, ids: [] };
@@ -994,6 +1082,12 @@
         .forEach(function (b) { lines.push('- **' + (b.start || '--:--') + '** — ' + (b.text || '')); });
     }
     if (d.notes) lines.push('', '## Notes', '', d.notes);
+    if (d.review && d.review.at) {
+      lines.push('', '## Review');
+      if (d.review.went) lines.push('', '**What went well:** ' + d.review.went);
+      if (d.review.drained) lines.push('', '**What drained you:** ' + d.review.drained);
+      if (d.review.next) lines.push('', '**For tomorrow:** ' + d.review.next);
+    }
     UI.download('planner-' + key + '.md', lines.join('\n'), 'text/markdown;charset=utf-8');
     UI.toast('Day exported as Markdown');
   }
@@ -1087,6 +1181,12 @@
       d.todos.forEach(function (t) { out.push('- [' + (t.done ? 'x' : ' ') + '] ' + t.text); });
       d.blocks.forEach(function (b) { out.push('- ' + (b.start || '--:--') + ' — ' + (b.text || '')); });
       if (d.notes) out.push('', d.notes);
+      if (d.review && d.review.at) {
+        out.push('', '**Review**');
+        if (d.review.went) out.push('- Went well: ' + d.review.went);
+        if (d.review.drained) out.push('- Drained: ' + d.review.drained);
+        if (d.review.next) out.push('- For tomorrow: ' + d.review.next);
+      }
       out.push('');
     });
     Object.keys(u.weeks).sort().forEach(function (k) {
@@ -1095,6 +1195,13 @@
       out.push('## Week of ' + D.prettyDay(k));
       if (w.focus) out.push('', '**Focus:** ' + w.focus);
       (w.todos || []).forEach(function (t) { out.push('- [' + (t.done ? 'x' : ' ') + '] ' + t.text); });
+      if (w.review && w.review.at) {
+        out.push('', '**Review**');
+        if (w.review.done) out.push('- Got done: ' + w.review.done.replace(/\n/g, ' '));
+        if (w.review.stuck) out.push('- Still worth doing: ' + w.review.stuck.replace(/\n/g, ' '));
+        if (w.review.change) out.push('- What changes: ' + w.review.change.replace(/\n/g, ' '));
+        if (w.review.focusNext) out.push("- Next week's focus: " + w.review.focusNext);
+      }
       out.push('');
     });
     Object.keys(u.years).sort().forEach(function (k) {
@@ -1695,6 +1802,9 @@
         case 'trash-delete': actTrashDelete(ds.id); break;
         case 'trash-empty': actTrashEmpty(); break;
         case 'duplicate-day': actDuplicateDay(ds.key); break;
+        case 'week-review': actWeekReview(ds.key); break;
+        case 'day-review': actDayReview(ds.key); break;
+        case 'dismiss-review': Store.snoozeReview(); refresh(); UI.toast('Hidden until tomorrow'); break;
         case 'select-start': selectStart(ds.key); break;
         case 'select-cancel': selectCancel(); break;
         case 'select-toggle': selectToggle(el); break;
@@ -1796,6 +1906,7 @@
       if (b === 'week-start') { Store.user().weekStart = Number(t.value); Store.saveNow(); refresh(); return; }
       if (b === 'auto-archive') { Store.user().settings.autoArchive = t.checked; Store.saveNow(); return; }
       if (b === 'capacity') { Store.setCapacity(t.value); refresh(); return; }
+      if (b === 'review-day') { Store.setReviewDay(Number(t.value)); refresh(); return; }
       if (b === 'require-pin') { Store.user().settings.requirePin = t.checked; Store.saveNow(); return; }
       if (b === 'block-start' || b === 'block-text') {
         var day = Store.day(t.dataset.key, true);

@@ -62,6 +62,17 @@
           '</div>';
       }
 
+      /* ---- weekly review nudge ---- */
+      var due = Store.reviewDue();
+      if (due) {
+        h += '<div class="notice">' + icon('note') +
+          '<div class="notice-text"><strong>It is your review day.</strong>' +
+          '<span>Ten minutes on the week now saves a week of drift.</span></div>' +
+          '<button class="btn btn-sm" data-act="week-review" data-key="' + due.weekKey + '">Review the week</button>' +
+          '<button class="btn btn-quiet btn-sm" data-act="dismiss-review">Later</button>' +
+          '</div>';
+      }
+
       /* ---- stat tiles ---- */
       h += '<section class="stats">' +
         '<div class="stat"><div class="stat-top">' + icon('today') + '<span class="eyebrow">Tasks today</span></div>' +

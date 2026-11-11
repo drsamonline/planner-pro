@@ -870,6 +870,96 @@ await step('bulk move sends tasks to another day', async () => {
 });
 
 /* ------------------------------------------------------------------ */
+console.log('\n— weekly & daily reviews —');
+await step('the weekly review is due on the configured day', async () => {
+  const due = await page.evaluate(() => {
+    Store.user().reviewDay = DateUtil.weekday(DateUtil.todayKey());
+    Store.user().reviewSnoozeUntil = 0;
+    Store.saveNow();
+    return Store.reviewDue();
+  });
+  ok(due && due.weekKey, 'review not due on the configured weekday');
+});
+await step('the weekly review opens with a summary and saves', async () => {
+  await page.evaluate(() => { location.hash = '#/today'; });
+  await sleep(400);
+  ok(await visible('[data-act="week-review"]'), 'review nudge missing from Today');
+
+  await page.click('[data-act="week-review"]');
+  await sel('#rvDone');
+  const stats = await textOf('.review-stats');
+  ok(stats.includes('tasks done'), 'summary strip missing: ' + stats);
+
+  await page.$eval('#rvDone', (el) => { el.value = '· shipped the release'; });
+  await page.$eval('#rvFocus', (el) => { el.value = 'Write the next chapter'; });
+  const btns = await page.$$('#modalActions .btn');
+  await btns[btns.length - 1].click();
+  await sleep(500);
+
+  const saved = await page.evaluate(() => {
+    const u = Store.user();
+    const wk = DateUtil.weekStartKey(DateUtil.todayKey(), u.weekStart);
+    const w = Store.week(wk, true);
+    const next = Store.week(DateUtil.addDays(wk, 7), true);
+    return {
+      hasReview: !!(w.review && w.review.at),
+      done: (w.review || {}).done || '',
+      nextFocus: next.focus || '',
+      stillDue: Store.reviewDue()
+    };
+  });
+  ok(saved.hasReview, 'review not saved');
+  ok(saved.done.indexOf('shipped') >= 0, 'answer not stored');
+  eq(saved.nextFocus, 'Write the next chapter', 'next week focus not set');
+  eq(saved.stillDue, null, 'review still due after saving');
+});
+await step('the review shows on the week view', async () => {
+  await page.evaluate(() => {
+    const wk = DateUtil.weekStartKey(DateUtil.todayKey(), Store.user().weekStart);
+    location.hash = '#/week/' + wk;
+  });
+  await sleep(450);
+  const text = await page.$eval('#view', (el) => el.textContent);
+  ok(text.includes('Week in review'), 'review card missing');
+  ok(text.includes('shipped the release'), 'saved answers not rendered');
+  ok((await count('.review-body')) >= 1, 'review body missing');
+});
+await step('the day review saves and seeds tomorrow', async () => {
+  await page.evaluate(() => { location.hash = '#/day/' + DateUtil.todayKey(); });
+  await sleep(450);
+  await page.click('[data-act="day-review"]');
+  await sel('#drWent');
+  await page.$eval('#drWent', (el) => { el.value = 'Finished the redesign'; });
+  await page.$eval('#drNext', (el) => { el.value = 'Start the draft'; });
+  const btns = await page.$$('#modalActions .btn');
+  await btns[btns.length - 1].click();
+  await sleep(500);
+
+  const res = await page.evaluate(() => {
+    const t = DateUtil.todayKey();
+    const d = Store.day(t, true);
+    const tomorrow = Store.day(DateUtil.addDays(t, 1), true);
+    return {
+      hasReview: !!(d.review && d.review.at),
+      went: (d.review || {}).went || '',
+      seeded: tomorrow.todos.some((x) => x.text === 'Start the draft')
+    };
+  });
+  ok(res.hasReview, 'day review not saved');
+  ok(res.went.indexOf('redesign') >= 0, 'answer missing');
+  ok(res.seeded, '“one thing for tomorrow” did not become a task');
+  ok(await visible('.review-body'), 'review not rendered in the day view');
+});
+await step('the review day can be switched off', async () => {
+  await nav('settings');
+  ok(await visible('#setReview'), 'review-day select missing');
+  await page.select('#setReview', '-1');
+  await sleep(350);
+  eq(await page.evaluate(() => Store.user().reviewDay), -1, 'setting not stored');
+  eq(await page.evaluate(() => Store.reviewDue()), null, 'review still due when off');
+});
+
+/* ------------------------------------------------------------------ */
 console.log('\n— week view —');
 await step('renders 7 day columns', async () => {
   await nav('week');

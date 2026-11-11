@@ -40,6 +40,8 @@
         '<button class="btn btn-ghost btn-sm" data-act="print">' + icon('print') + '<span class="btn-label">Print</span></button>' +
         '<button class="btn btn-ghost btn-sm" data-act="export-ics" data-days="' + dates.join(',') + '" title="Export this week to a calendar app">' +
         icon('clock') + '<span class="btn-label">Calendar</span></button>' +
+        '<button class="btn ' + (w.review && w.review.at ? 'btn-ghost' : '') + ' btn-sm" data-act="week-review" data-key="' + key + '">' +
+        icon('note') + (w.review && w.review.at ? 'Review' : 'Review week') + '</button>' +
         '</div>';
 
       /* focus + goals */
@@ -86,6 +88,18 @@
           '<button class="add-mini" data-act="go" data-href="#/day/' + k + '">+ add task</button>' +
           '</div>';
       }).join('') + '</div>';
+
+      /* review */
+      h += '<div class="card"><div class="card-head"><h2>' + icon('note') + 'Week in review</h2>' +
+        (w.review && w.review.at ? '<span class="pill pill-ok">reviewed</span>' : '<span class="pill">not yet</span>') +
+        '</div>' +
+        (w.review && w.review.at
+          ? Parts.reviewBody(w.review, 'week')
+          : '<p class="small muted">Four questions at the end of the week: what got done, what didn’t, ' +
+            'what you would change, and the one thing for next week.</p>' +
+            '<div><button class="btn btn-ghost btn-sm" data-act="week-review" data-key="' + key + '">' +
+            icon('note') + 'Start the review</button></div>') +
+        '</div>';
 
       return h;
     }

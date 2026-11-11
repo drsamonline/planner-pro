@@ -96,6 +96,35 @@
     return '<div class="rows">' + list.map(function (t) { return todoRow(t, scope, key); }).join('') + '</div>';
   }
 
+  /** Rendered review answers, used by the week and day views. */
+  function reviewBody(review, kind) {
+    if (!review || !review.at) return '';
+    var rows = [];
+    function row(label, value) {
+      if (!value) return;
+      rows.push('<div class="review-q"><span class="eyebrow">' + esc(label) + '</span>' +
+        '<p class="small" style="white-space:pre-wrap">' + esc(value) + '</p></div>');
+    }
+    if (kind === 'week') {
+      row('What got done', review.done);
+      row('Still worth doing', review.stuck);
+      row('What changes', review.change);
+      if (review.focusNext) {
+        rows.push('<div class="review-q"><span class="eyebrow">Next week’s focus</span>' +
+          '<p class="small strong">' + esc(review.focusNext) + '</p></div>');
+      }
+    } else {
+      row('What went well', review.went);
+      row('What drained you', review.drained);
+      if (review.next) {
+        rows.push('<div class="review-q"><span class="eyebrow">For tomorrow</span>' +
+          '<p class="small strong">' + esc(review.next) + '</p></div>');
+      }
+    }
+    if (!rows.length) return '';
+    return '<div class="review-body">' + rows.join('') + '</div>';
+  }
+
   /** "Planned 2h 30m of 8h" with a thin bar; turns amber past capacity. */
   function loadBar(load) {
     if (!load || !load.tasks) return '';
@@ -111,7 +140,7 @@
   }
 
   global.Parts = {
-    editingId: null, selectionKey: null, selectedIds: [], loadBar: loadBar,
+    editingId: null, selectionKey: null, selectedIds: [], loadBar: loadBar, reviewBody: reviewBody,
     todoRow: todoRow, goalRow: goalRow, blockRow: blockRow,
     composer: composer, rows: rows
   };
