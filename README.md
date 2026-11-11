@@ -114,7 +114,7 @@ SmartScreen/Gatekeeper will ask you to confirm the first launch):
 | [`planner-pro-14.0.0-windows-portable.exe`](https://github.com/drsamonline/planner-pro/releases/latest/download/planner-pro-14.0.0-windows-portable.exe) | Windows | Portable, no install |
 | [`planner-pro-14.0.0-macos-arm64.dmg`](https://github.com/drsamonline/planner-pro/releases/latest/download/planner-pro-14.0.0-macos-arm64.dmg) | macOS (Apple silicon) | Disk image |
 | [`planner-pro_14.0.0_amd64.deb`](https://github.com/drsamonline/planner-pro/releases/latest/download/planner-pro_14.0.0_amd64.deb) | Debian / Ubuntu | Package |
-| `planner-pro-debug.apk` | Android | Debug APK — attached by the [Android workflow](.github/workflows/android.yml); sideload it or install via `adb install` |
+| [`planner-pro-14.0.0-android.apk`](https://github.com/drsamonline/planner-pro/releases/latest/download/planner-pro-14.0.0-android.apk) | Android | Debug APK — sideload it, or `adb install planner-pro-14.0.0-android.apk` |
 
 **Run from source**
 
