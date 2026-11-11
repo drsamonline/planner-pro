@@ -40,7 +40,7 @@ that owns your data. Planner Pro is a single small app you can open from a file,
 install as a PWA, or build into an APK/EXE. It loads instantly, works on a plane,
 and stores everything on your device.
 
-- **Zero runtime dependencies.** No React, no build step, no CDN, no fonts to fetch. ~120 KB of HTML/CSS/JS.
+- **Zero runtime dependencies.** No React, no build step, no CDN, no fonts to fetch. ~210 KB of HTML/CSS/JS minified (290 KB readable).
 - **Genuinely offline.** A service worker precaches the whole shell; the app opens in under a second with the network off.
 - **Local-first data.** One versioned `localStorage` document, exported to JSON in one click. Your planner is a file you own.
 - **Fast by construction.** Views render in a single string pass with event delegation — no virtual DOM, no re-render churn, no spinners.
