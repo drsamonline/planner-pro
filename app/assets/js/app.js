@@ -692,9 +692,10 @@
   function actHealth() {
     var report = Store.healthCheck();
     if (!report) return;
+    var plural = function (n, one, many) { return n + ' ' + (n === 1 ? one : many); };
     var body = '<div class="review-stats tiny">' +
-      '<span><strong>' + report.days + '</strong> days</span>' +
-      '<span><strong>' + report.todos + '</strong> tasks</span>' +
+      '<span><strong>' + report.days + '</strong> ' + (report.days === 1 ? 'day' : 'days') + '</span>' +
+      '<span><strong>' + report.todos + '</strong> ' + (report.todos === 1 ? 'task' : 'tasks') + '</span>' +
       '<span><strong>' + report.trash + '</strong> in trash</span>' +
       '<span><strong>' + UI.fmtBytes(report.size) + '</strong> stored</span>' +
       '</div>' +
