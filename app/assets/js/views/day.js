@@ -4,7 +4,20 @@
   var esc = UI.esc, icon = UI.icon, D = global.DateUtil;
   global.Views = global.Views || {};
 
+  /** Footer actions for a day — rendered here and re-rendered by the live counter update. */
+  function dayActions(key) {
+    var st = Store.dayStats(key);
+    var prev = D.addDays(key, -1);
+    var pst = Store.dayStats(prev);
+    var prevOpen = pst.total - pst.done;
+    return (prevOpen ? '<button class="btn btn-ghost btn-sm" data-act="carry-over" data-from="' + prev + '" data-to="' + key + '">' +
+      icon('carry') + 'Carry ' + prevOpen + ' unfinished</button>' : '') +
+      (st.done ? '<button class="btn btn-quiet btn-sm" data-act="clear-done" data-key="' + key + '">' +
+        icon('trash') + 'Clear completed</button>' : '');
+  }
+
   global.Views.day = {
+    actions: dayActions,
     title: 'Day',
     subtitle: function (p) { return D.longDay(p || D.todayKey()); },
 
@@ -44,13 +57,14 @@
 
       h += '<div class="card"><div class="card-head"><h2>' + icon('check') + 'To-do</h2>' +
         '<div style="display:flex;gap:8px;align-items:center">' +
-        (st.total ? '<span class="pill' + (st.pct === 100 ? ' pill-ok' : '') + '">' + st.done + '/' + st.total + ' · ' + st.pct + '%</span>' : '') +
+        (st.total ? '<span class="pill' + (st.pct === 100 ? ' pill-ok' : '') + '" data-live="day-count" data-key="' + key + '">' +
+          st.done + '/' + st.total + ' · ' + st.pct + '%</span>' : '') +
         (st.total ? (selecting
           ? '<button class="btn btn-quiet btn-sm" data-act="select-cancel">Done</button>'
           : '<button class="btn btn-quiet btn-sm" data-act="select-start" data-key="' + key + '">Select</button>') : '') +
         '</div></div>' +
         Parts.composer('day', key, 'What needs doing?') +
-        Parts.loadBar(Store.dayLoad(key)) +
+        '<div data-live="load" data-key="' + key + '">' + Parts.loadBar(Store.dayLoad(key)) + '</div>' +
         Parts.rows(d.todos, 'day', key, 'check', 'Empty list. Add a task above — or enjoy the quiet.') +
         (selecting
           ? '<div class="bulk-bar">' +
@@ -60,11 +74,7 @@
             '<button class="btn btn-ghost btn-sm" data-act="bulk-move"' + (picked ? '' : ' disabled') + '>' + icon('carry') + 'Move…</button>' +
             '<button class="btn btn-danger btn-sm" data-act="bulk-delete"' + (picked ? '' : ' disabled') + '>' + icon('trash') + 'Delete</button>' +
             '</div>'
-          : '<div class="btn-row">' +
-            (prevOpen ? '<button class="btn btn-ghost btn-sm" data-act="carry-over" data-from="' + prev + '" data-to="' + key + '">' +
-              icon('carry') + 'Carry ' + prevOpen + ' unfinished</button>' : '') +
-            (st.done ? '<button class="btn btn-quiet btn-sm" data-act="clear-done" data-key="' + key + '">' + icon('trash') + 'Clear completed</button>' : '') +
-            '</div>') +
+          : '<div class="btn-row" data-live="day-actions" data-key="' + key + '">' + dayActions(key) + '</div>') +
         '</div>';
 
       /* schedule + notes */

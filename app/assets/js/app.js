@@ -368,12 +368,71 @@
     else location.hash = href;
   }
 
+  /** Update the handful of derived numbers without re-rendering the view.
+      A full refresh re-inserts ~90 KB of HTML for a 50-task day (about 66 ms of
+      layout); ticking a box should not cost that. */
+  function refreshCounts() {
+    document.querySelectorAll('[data-live="day-count"], [data-live="today-count"]').forEach(function (el) {
+      var st = Store.dayStats(el.dataset.key);
+      if (!st.total) { el.hidden = true; return; }
+      el.hidden = false;
+      el.textContent = el.dataset.live === 'day-count'
+        ? st.done + '/' + st.total + ' · ' + st.pct + '%'
+        : st.done + '/' + st.total;
+      el.classList.toggle('pill-ok', st.pct === 100);
+    });
+
+    document.querySelectorAll('[data-live="load"]').forEach(function (el) {
+      el.innerHTML = global.Parts.loadBar(Store.dayLoad(el.dataset.key));
+    });
+
+    document.querySelectorAll('[data-live="ring"]').forEach(function (el) {
+      var st = Store.dayStats(el.dataset.key);
+      var ring = el.querySelector('.ring');
+      if (ring) {
+        ring.style.setProperty('--p', st.pct);
+        var label = ring.querySelector('span');
+        if (label) label.textContent = st.pct + '%';
+      }
+      var value = el.querySelector('.stat-value');
+      if (value) value.innerHTML = st.done + '<small>/' + st.total + '</small>';
+    });
+
+    document.querySelectorAll('[data-live="open"]').forEach(function (el) {
+      var st = Store.dayStats(el.dataset.key);
+      el.textContent = Math.max(0, st.total - st.done);
+    });
+
+    // the footer buttons appear and disappear with the counts
+    document.querySelectorAll('[data-live="day-actions"]').forEach(function (el) {
+      el.innerHTML = global.Views.day.actions(el.dataset.key);
+    });
+    document.querySelectorAll('[data-live="today-actions"]').forEach(function (el) {
+      el.innerHTML = global.Views.today.actions(el.dataset.key);
+    });
+  }
+
   function actTodoToggle(el) {
     var f = findItem(el.dataset.scope, el.dataset.key, el.dataset.id);
     if (!f) return;
     f.item.done = !f.item.done;
-    Store.save();
-    refresh();
+    Store.saveNow();
+
+    // patch the row in place, then the counters — no re-render
+    var row = el.closest('.row');
+    if (row) {
+      row.classList.toggle('done', !!f.item.done);
+      var check = row.querySelector('.check');
+      if (check) check.setAttribute('aria-label', f.item.done ? 'Mark not done' : 'Mark done');
+      if (f.item.sub) {
+        var pill = row.querySelector('.pill-sub');
+        if (pill) {
+          var doneSubs = f.item.sub.filter(function (x) { return x.done; }).length;
+          pill.textContent = doneSubs + '/' + f.item.sub.length;
+        }
+      }
+    }
+    refreshCounts();
   }
 
   function actTodoPrio(el) {

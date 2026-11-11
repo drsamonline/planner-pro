@@ -21,7 +21,19 @@
     return 'no more blocks today';
   }
 
+  function todayActions(tk) {
+    var st = Store.dayStats(tk);
+    var yesterday = D.addDays(tk, -1);
+    var yst = Store.dayStats(yesterday);
+    var yOpen = yst.total - yst.done;
+    return (yOpen ? '<button class="btn btn-ghost btn-sm" data-act="carry-over" data-from="' + yesterday + '" data-to="' + tk + '">' +
+      icon('carry') + 'Bring ' + yOpen + ' from yesterday</button>' : '') +
+      (st.done ? '<button class="btn btn-quiet btn-sm" data-act="clear-done" data-key="' + tk + '">' +
+        icon('trash') + 'Clear completed</button>' : '');
+  }
+
   global.Views.today = {
+    actions: todayActions,
     title: 'Today',
     subtitle: function () { return D.longDay(D.todayKey()); },
 
@@ -76,7 +88,7 @@
       /* ---- stat tiles ---- */
       h += '<section class="stats">' +
         '<div class="stat"><div class="stat-top">' + icon('today') + '<span class="eyebrow">Tasks today</span></div>' +
-        '<div class="ring-wrap">' + UI.ring(st.pct, st.pct + '%') +
+        '<div class="ring-wrap" data-live="ring" data-key="' + tk + '">' + UI.ring(st.pct, st.pct + '%') +
         '<div><div class="stat-value num">' + st.done + '<small>/' + st.total + '</small></div>' +
         '<div class="stat-label">completed</div></div></div></div>' +
 
@@ -89,7 +101,7 @@
         '<div class="stat-label">' + esc(blockState(blocks)) + '</div></div>' +
 
         '<div class="stat"><div class="stat-top">' + icon('note') + '<span class="eyebrow">Still open</span></div>' +
-        '<div class="stat-value num">' + open + '</div>' +
+        '<div class="stat-value num" data-live="open" data-key="' + tk + '">' + open + '</div>' +
         '<div class="stat-label">' + (open ? 'tasks left today' : 'all clear') + '</div></div>' +
         '</section>';
 
@@ -104,16 +116,12 @@
       h += '<div class="grid" style="gap:var(--gap)">';
 
       h += '<div class="card"><div class="card-head"><h2>' + icon('day') + 'Today\'s tasks' +
-        (st.total ? ' <span class="pill">' + st.done + '/' + st.total + '</span>' : '') +
+        (st.total ? ' <span class="pill" data-live="today-count" data-key="' + tk + '">' + st.done + '/' + st.total + '</span>' : '') +
         '</h2><button class="btn btn-quiet btn-sm" data-act="go" data-href="#/day/' + tk + '">Open day ' + icon('right') + '</button></div>' +
         Parts.composer('day', tk, 'Add a task and press Enter…') +
-        Parts.loadBar(Store.dayLoad(tk)) +
+        '<div data-live="load" data-key="' + tk + '">' + Parts.loadBar(Store.dayLoad(tk)) + '</div>' +
         Parts.rows(todos, 'day', tk, 'check', 'No tasks yet — add the one thing that matters most.') +
-        (todos.length ? '<div class="btn-row">' +
-          (yOpen ? '<button class="btn btn-ghost btn-sm" data-act="carry-over" data-from="' + yesterday + '" data-to="' + tk + '">' +
-            icon('carry') + 'Bring ' + yOpen + ' from yesterday</button>' : '') +
-          (st.done ? '<button class="btn btn-quiet btn-sm" data-act="clear-done" data-key="' + tk + '">' + icon('trash') + 'Clear completed</button>' : '') +
-          '</div>' : '') +
+        (todos.length ? '<div class="btn-row" data-live="today-actions" data-key="' + tk + '">' + todayActions(tk) + '</div>' : '') +
         '</div>';
 
       h += '<div class="card"><div class="card-head"><h2>' + icon('clock') + 'Schedule</h2>' +

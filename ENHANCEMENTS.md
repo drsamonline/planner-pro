@@ -139,6 +139,7 @@ Effort is honest wall-clock time for one developer who already knows the code:
 > **15.0.0 — C1 (IndexedDB) and C2 (compression).**
 > **15.1.0 — C5 (attachments) and C6 (month view). Tier C complete apart from the
 > items dropped by request (C3, C4, C7).**
+> **15.2.0 — the speed list: in-place updates, content-visibility, WebP.**
 >
 > **Scope decision:** i18n (C3) and everything that touches a network — user-owned
 > sync (C4), a sync server (C7) — are dropped. The app has no networking code and

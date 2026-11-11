@@ -4,6 +4,26 @@ All notable changes to Planner Pro. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [semantic versioning](https://semver.org/).
 
+## [15.2.0] — 2026-11-11
+
+A measured performance pass. No new surface; the same app, doing less work per
+interaction.
+
+### Changed
+
+- **Ticking a task no longer re-renders the view.** `actTodoToggle` flips the item, patches the row's class and label, then updates only the derived numbers — the count pill, the load bar, the ring, the open count and the footer buttons — through `data-live` hooks. Measured on a 50-task day: **1.7 ms instead of 66 ms** (a full render is 1.1 ms; inserting its 90 KB of HTML and laying it out is the other 65).
+- **`content-visibility: auto`** with `contain-intrinsic-size` on month cells and week columns, so long grids skip layout for off-screen days.
+- **The landing page ships WebP** with PNG fallback via `<picture>`: 3.9 MB of screenshots became 1.1 MB (−71%) for browsers that take it.
+
+### Not done, on purpose
+
+- **Cached `Intl` formatters**: the only two uses are the clock, formatted once a minute. Caching would be noise.
+- **`requestIdleCallback` for saves**: the save is debounced 220 ms already; moving it to idle time would trade write latency for a metric nobody feels.
+
+### Verified
+
+- The end-to-end suite grew from 120 to **122 checks**, including a guard on the interaction itself: 50 tasks, one click, under 20 ms, and the row node still the same object afterwards (which is what proves nothing re-rendered). Plus the Today view's pill, open count and ring updating in place.
+
 ## [15.1.0] — 2026-11-11
 
 The two features the storage work was holding back: files on a day, and the month

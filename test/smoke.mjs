@@ -1581,6 +1581,70 @@ await step('desktop: rail is visible', async () => {
 });
 
 /* ------------------------------------------------------------------ */
+console.log('\n— interaction cost —');
+await step('ticking a task patches the DOM instead of re-rendering', async () => {
+  await page.evaluate(() => {
+    const d = Store.day('2026-10-20', true);
+    d.todos = Array.from({ length: 50 }, (_, i) => ({ id: 'perf' + i, text: 'Task ' + i, done: false }));
+    Store.saveNow();
+    location.hash = '#/week';
+  });
+  await sleep(300);
+  await page.evaluate(() => { location.hash = '#/day/2026-10-20'; });
+  await sleep(600);
+
+  const res = await page.evaluate(() => {
+    const rows = document.querySelectorAll('.rows .row');
+    const first = rows[0];
+    const t0 = performance.now();
+    first.querySelector('.check').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    const elapsed = performance.now() - t0;
+    return {
+      elapsed,
+      rowsBefore: rows.length,
+      rowsAfter: document.querySelectorAll('.rows .row').length,
+      sameNode: document.querySelector('.rows .row') === first,
+      done: first.classList.contains('done'),
+      pill: document.querySelector('[data-live="day-count"]').textContent
+    };
+  });
+  ok(res.elapsed < 20, 'toggle took ' + res.elapsed.toFixed(1) + 'ms — it is re-rendering');
+  eq(res.sameNode, true, 'the row node was replaced, so the view re-rendered');
+  eq(res.rowsAfter, res.rowsBefore, 'row count changed');
+  eq(res.done, true, 'row was not marked done');
+  ok(res.pill.indexOf('1/50') === 0, 'counter did not update in place: ' + res.pill);
+});
+await step('the counter still updates on the Today view', async () => {
+  await page.evaluate(() => {
+    const d = Store.day(DateUtil.todayKey(), true);
+    d.todos = [
+      { id: 'live1', text: 'One', done: false },
+      { id: 'live2', text: 'Two', done: false }
+    ];
+    Store.saveNow();
+    location.hash = '#/day/2026-10-20';
+  });
+  await sleep(300);
+  await page.evaluate(() => { location.hash = '#/today'; });
+  await sleep(600);
+
+  const res = await page.evaluate(() => {
+    const box = document.querySelector('.rows .row .check');
+    box.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    return {
+      pill: (document.querySelector('[data-live="today-count"]') || {}).textContent,
+      open: (document.querySelector('[data-live="open"]') || {}).textContent,
+      ring: (document.querySelector('[data-live="ring"] .ring') || {}).style
+        ? document.querySelector('[data-live="ring"] .ring').style.getPropertyValue('--p')
+        : null
+    };
+  });
+  ok(/^1\/2$/.test(res.pill || ''), 'today pill wrong: ' + res.pill);
+  eq(res.open, '1', 'open count not updated');
+  eq(res.ring, '50', 'ring not updated');
+});
+
+/* ------------------------------------------------------------------ */
 console.log('\n— month view —');
 await step('the month grid renders every day of the month', async () => {
   await page.evaluate(() => {

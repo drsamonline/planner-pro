@@ -26,7 +26,7 @@
 
   global.Views.about = {
     title: 'About',
-    subtitle: function () { return 'Version 15.1 · offline & local-first'; },
+    subtitle: function () { return 'Version 15.2 · offline & local-first'; },
 
     render: function () {
       var h = '';
@@ -35,7 +35,7 @@
         '<div><strong>Planner Pro</strong><small>Day · week · month · year planner</small></div></div>' +
         '<p class="small muted">A planner that behaves like a tool, not a website. It runs entirely in your browser, works with no internet connection, and stores every task and note on this device — no account, no analytics, no server.</p>' +
         '<div class="btn-row">' +
-        '<span class="pill">v15.1</span><span class="pill">Offline-first</span><span class="pill">Multi-profile</span><span class="pill">No tracking</span>' +
+        '<span class="pill">v15.2</span><span class="pill">Offline-first</span><span class="pill">Multi-profile</span><span class="pill">No tracking</span>' +
         '</div></div>';
 
       h += '<div class="grid g2">' +
