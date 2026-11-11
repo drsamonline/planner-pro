@@ -5,6 +5,7 @@
  */
 import http from 'node:http';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import puppeteer from 'puppeteer-core';
@@ -1647,12 +1648,16 @@ await step('the file input adds an attachment and it can be removed', async () =
 
   const input = await page.$('input[data-file="attach"]');
   ok(input, 'no file input on the day view');
-  await input.uploadFile('/tmp/attach-test.txt');
+
+  // the fixture is created here, not assumed to exist on the runner
+  const fixture = path.join(os.tmpdir(), 'planner-attach-test.txt');
+  fs.writeFileSync(fixture, 'referral note');
+  await input.uploadFile(fixture);
   await sleep(700);
 
   const after = await page.evaluate(() => (Store.peekDay('2026-12-16').files || []).map((f) => f.name));
   eq(after.length, 1, 'file was not attached');
-  eq(after[0], 'attach-test.txt', 'wrong name');
+  eq(after[0], path.basename(fixture), 'wrong name');
   ok(await visible('.attach-name'), 'attachment row missing');
 
   await page.click('[data-act="attach-del"]');
