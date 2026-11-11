@@ -73,14 +73,21 @@
         '<button class="btn" data-act="export-db">' + icon('download') + 'Export database (.json)</button>' +
         '<button class="btn btn-ghost" data-act="import-db">' + icon('upload') + 'Import database (.json)</button>' +
         '<input type="file" id="importFile" accept="application/json,.json" data-file="import" hidden>' +
+        '<input type="file" id="importEncFile" accept=".planner,application/json" data-file="import-encrypted" hidden>' +
         '<button class="btn btn-ghost" data-act="export-md">' + icon('note') + 'Export all as Markdown</button>' +
+        '<div style="border-top:1px solid var(--line);margin:6px 0 2px"></div>' +
+        '<p class="tiny dim" style="margin:0">Encrypted backup — AES-256, unlocked with a passphrase. Safe to keep in cloud storage. There is no recovery if you forget it.</p>' +
+        '<div class="btn-row">' +
+        '<button class="btn btn-ghost btn-sm" data-act="export-encrypted">' + icon('lock') + 'Encrypted backup</button>' +
+        '<button class="btn btn-quiet btn-sm" data-act="import-encrypted">' + icon('upload') + 'Restore encrypted</button>' +
+        '</div>' +
         '</div>' +
 
         '<div class="card"><div class="card-head"><h2>' + icon('info') + 'App</h2></div>' +
         '<p class="small muted">Planner Pro works fully offline. Install it for a home-screen icon and instant launch.</p>' +
         '<button class="btn btn-ghost" data-act="install" id="installBtn">' + icon('download') + 'Install app</button>' +
         '<p class="tiny dim" id="installHint">On iPhone/iPad use Share → “Add to Home Screen”.</p>' +
-        '<div class="row-actions" style="margin-top:6px">' +
+        '<div class="btn-row" style="margin-top:6px">' +
         '<button class="btn btn-quiet btn-sm" data-act="go" data-href="#/about">' + icon('info') + 'About &amp; shortcuts</button>' +
         '</div></div>' +
         '</div>';
@@ -99,7 +106,7 @@
               '<div class="row-main"><span class="row-text" style="cursor:default">' + esc(r.text) + '</span>' +
               '<span class="row-meta"><span class="pill pill-repeat">' + esc(Store.repeatLabel(r)) + '</span>' +
               (r.est ? '<span class="pill pill-est">' + esc(UI.duration(r.est)) + '</span>' : '') + '</span></div>' +
-              '<div class="row-actions" style="opacity:1">' +
+              '<div class="btn-row">' +
               '<button class="icon-btn danger" data-act="recurring-delete" data-id="' + esc(r.id) + '" aria-label="Delete repeat">' +
               icon('trash') + '</button></div></div>';
           }).join('') + '</div>'
@@ -116,19 +123,19 @@
             return '<div class="row" style="grid-template-columns:minmax(0,1fr) auto">' +
               '<div style="min-width:0"><div class="row-text">' + esc(e.text || 'Item') + '</div>' +
               '<div class="tiny dim">' + esc(kindLabel(e.kind)) + ' · ' + esc(ago(e.at)) + '</div></div>' +
-              '<div class="row-actions" style="opacity:1">' +
+              '<div class="btn-row">' +
               '<button class="btn btn-quiet btn-sm" data-act="trash-restore" data-id="' + esc(e.id) + '">Restore</button>' +
               '<button class="icon-btn danger" data-act="trash-delete" data-id="' + esc(e.id) + '" aria-label="Remove for good">' +
               icon('x') + '</button></div></div>';
           }).join('') + '</div>' +
-          '<div class="row-actions"><button class="btn btn-ghost btn-sm" data-act="trash-empty">' + icon('trash') + 'Empty trash</button></div>'
+          '<div class="btn-row"><button class="btn btn-ghost btn-sm" data-act="trash-empty">' + icon('trash') + 'Empty trash</button></div>'
           : UI.empty('trash', 'Nothing deleted yet — deletes land here first.')) +
         '</div>';
 
       /* danger */
       h += '<div class="card"><div class="card-head"><h2 style="color:var(--bad)">Danger zone</h2></div>' +
         '<p class="small muted">Deleting this profile removes its days, weeks, goals and archives from this device. Export a backup first.</p>' +
-        '<div class="row-actions"><button class="btn btn-danger" data-act="delete-profile">Delete profile “' + esc(u.name) + '”</button>' +
+        '<div class="btn-row"><button class="btn btn-danger" data-act="delete-profile">Delete profile “' + esc(u.name) + '”</button>' +
         '<button class="btn btn-ghost" data-act="account">Switch profile</button></div>' +
         '</div>';
 

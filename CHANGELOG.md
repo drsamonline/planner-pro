@@ -4,6 +4,28 @@ All notable changes to Planner Pro. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [semantic versioning](https://semver.org/).
 
+## [14.5.0] — 2026-11-11
+
+Trust. The planner can now hand you a backup that is safe to leave in cloud
+storage, and cleaning up a messy day is no longer one row at a time.
+
+### Added
+
+- **Encrypted backups.** Settings → Backup exports an AES-256-GCM envelope with a PBKDF2-derived key (SHA-256, 150 000 iterations, random 16-byte salt, 12-byte IV) — all in the browser via WebCrypto, no library. The file is plain JSON you can read the shape of, but the payload is unreadable without the passphrase. Restore detects the envelope, asks for the passphrase and refuses politely on a wrong one.
+- **Bulk actions.** "Select" on the day list turns rows into checkboxes; pick several and move them to another date (estimates, times and tags travel with them) or delete them as one undoable action.
+
+### Changed
+
+- Backup copy now explains the difference between the plain JSON export and the encrypted one.
+
+### Fixed
+
+- **Action rows were invisible on desktop.** Several places outside a task row reused `.row-actions`, which stays at `opacity: 0` until hover: the Day view's "Carry unfinished" and "Clear completed", the Danger-zone delete button, "Empty trash", the About screen's GitHub and Sponsor links, and the new encrypted-backup buttons. They now use a `.btn-row` class. This was the same root cause as the invisible Insights footer fixed in 14.4.0.
+
+### Verified
+
+- The end-to-end suite grew from 86 to **92 checks**: an encrypt→decrypt round-trip that compares the full document, a wrong passphrase being rejected, strict envelope detection (valid / plain database / junk), the encrypted-backup dialog, bulk selection counting, bulk delete with undo, and bulk move across days.
+
 ## [14.4.0] — 2026-11-11
 
 Looking back. The planner could tell you what to do today; now it can show you what

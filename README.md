@@ -14,9 +14,9 @@ Day, week, month and year planning in one quiet screen. Multi-profile, PIN-locke
 </p>
 
 <p align="center">
-  <img alt="Version" src="https://img.shields.io/badge/version-14.4.0-8B5CF6">
+  <img alt="Version" src="https://img.shields.io/badge/version-14.5.0-8B5CF6">
   <img alt="License" src="https://img.shields.io/badge/license-PolyForm%20Noncommercial%201.0.0-22D3EE">
-  <img alt="Tests" src="https://img.shields.io/badge/e2e%20checks-86%20passing-34D399">
+  <img alt="Tests" src="https://img.shields.io/badge/e2e%20checks-92%20passing-34D399">
   <img alt="Offline" src="https://img.shields.io/badge/works%20offline-100%25-34D399">
   <img alt="No tracking" src="https://img.shields.io/badge/tracking-none-lightgrey">
   <img alt="Dependencies" src="https://img.shields.io/badge/runtime%20deps-zero-brightgreen">
@@ -80,6 +80,8 @@ and stores everything on your device.
 - **Day templates** — build a routine once ("clinic day"), save it, apply it to any date.
 - **Estimates and capacity** — put minutes on a task and see planned time against your day; the bar turns amber when you overbook.
 - **Insights** — a year heatmap, best streak, busiest weekday, 30-day trend and your most-used tags. Click any day to open it.
+- **Encrypted backups** — AES-256-GCM with a PBKDF2-derived key, unlocked by a passphrase you choose. Safe to keep in cloud storage; no recovery if you forget it.
+- **Bulk actions** — select several tasks to move them to another day or delete them (with undo).
 - **Tag filtering** — click a `#tag` anywhere, or type `#health` in search.
 - **Undo and a 30-day trash** — every delete is reversible, twice over.
 - **Drag to reorder** — order is meaning in a plan; move a task or block by its handle.
@@ -187,7 +189,7 @@ date, so a plan belongs to *one* week instead of repeating every week.
 
 ```bash
 npm install          # dev tooling only: puppeteer-core + electron-builder
-npm test             # 86 end-to-end checks in headless Chromium
+npm test             # 92 end-to-end checks in headless Chromium
 npm run build:single # one portable planner-pro.html
 npm run build:web    # zip of the offline web build in dist/
 ```

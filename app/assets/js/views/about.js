@@ -26,7 +26,7 @@
 
   global.Views.about = {
     title: 'About',
-    subtitle: function () { return 'Version 14.4 · offline & local-first'; },
+    subtitle: function () { return 'Version 14.5 · offline & local-first'; },
 
     render: function () {
       var h = '';
@@ -34,15 +34,15 @@
       h += '<div class="card"><div class="brand brand-lg"><span class="brand-mark">P</span>' +
         '<div><strong>Planner Pro</strong><small>Day · week · month · year planner</small></div></div>' +
         '<p class="small muted">A planner that behaves like a tool, not a website. It runs entirely in your browser, works with no internet connection, and stores every task and note on this device — no account, no analytics, no server.</p>' +
-        '<div class="row-actions">' +
-        '<span class="pill">v14.4</span><span class="pill">Offline-first</span><span class="pill">Multi-profile</span><span class="pill">No tracking</span>' +
+        '<div class="btn-row">' +
+        '<span class="pill">v14.5</span><span class="pill">Offline-first</span><span class="pill">Multi-profile</span><span class="pill">No tracking</span>' +
         '</div></div>';
 
       h += '<div class="grid g2">' +
         '<div class="card"><div class="card-head"><h2>' + icon('info') + 'Author</h2></div>' +
         '<p class="small"><strong>Dr. Sohil Momin</strong></p>' +
         '<p class="tiny dim">Built as a personal planning tool and released for anyone who wants a calm, private planner.</p>' +
-        '<div class="row-actions"><a class="btn btn-ghost btn-sm" href="https://github.com/drsamonline" target="_blank" rel="noopener">GitHub</a>' +
+        '<div class="btn-row"><a class="btn btn-ghost btn-sm" href="https://github.com/drsamonline" target="_blank" rel="noopener">GitHub</a>' +
         '<a class="btn btn-ghost btn-sm" href="https://github.com/sponsors/drsamonline" target="_blank" rel="noopener">Sponsor</a></div>' +
         '</div>' +
         '<div class="card"><div class="card-head"><h2>' + icon('lock') + 'License</h2></div>' +
@@ -57,6 +57,7 @@
         }).join('') + '</div></div>';
 
       h += '<div class="card"><div class="card-head"><h2>' + icon('note') + 'How your data works</h2></div>' +
+        '<p class="small muted">Encrypted backups use AES-256-GCM with a PBKDF2-derived key, all in this browser. The passphrase is never stored — there is no recovery.</p>' +
         '<p class="small muted">Repeating tasks are created when you open a day, so a missed day fills itself in. Estimates roll up into a planned-vs-capacity bar on the day.</p>' +
         '<p class="small muted">Quick add reads plain English: <code>call the clinic tomorrow 4pm #health</code> becomes a task on tomorrow at 16:00 with a tag.</p>' +
         '<p class="small muted">The command palette also understands dates: type <code>tomorrow</code>, <code>next friday</code> or <code>25 dec</code> to jump straight there.</p>' +

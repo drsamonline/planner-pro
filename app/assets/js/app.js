@@ -256,6 +256,10 @@
     currentId = id;
     currentParam = param || '';
     cursor = -1;
+    if (selection.key && (id !== 'day' && id !== 'today')) {
+      selection = { key: null, ids: [] };
+    }
+    syncSelection();
 
     // materialise repeating tasks for whatever days this view shows
     try {
@@ -624,6 +628,92 @@
           body.querySelector('#detDays').style.display = select.value === 'custom' ? '' : 'none';
         });
       }
+    });
+  }
+
+  /* ---------------- bulk selection ---------------- */
+
+  var selection = { key: null, ids: [] };
+
+  function syncSelection() {
+    global.Parts.selectionKey = selection.key;
+    global.Parts.selectedIds = selection.ids.slice();
+  }
+
+  function selectStart(key) {
+    selection = { key: key, ids: [] };
+    syncSelection();
+    refresh();
+  }
+
+  function selectCancel() {
+    selection = { key: null, ids: [] };
+    syncSelection();
+    refresh();
+  }
+
+  function selectToggle(el) {
+    var id = el.dataset.id;
+    if (selection.key !== el.dataset.key) { selection = { key: el.dataset.key, ids: [] }; }
+    var at = selection.ids.indexOf(id);
+    if (at >= 0) selection.ids.splice(at, 1);
+    else selection.ids.push(id);
+    syncSelection();
+    refresh();
+  }
+
+  function selectAll(key) {
+    var d = Store.day(key, true);
+    selection = { key: key, ids: d.todos.map(function (t) { return t.id; }) };
+    syncSelection();
+    refresh();
+  }
+
+  function bulkDelete() {
+    var key = selection.key;
+    var ids = selection.ids.slice();
+    if (!ids.length) return;
+    var d = Store.day(key, true);
+    var removed = [];
+    d.todos.forEach(function (t, i) { if (ids.indexOf(t.id) >= 0) removed.push({ item: t, index: i }); });
+    d.todos = d.todos.filter(function (t) { return ids.indexOf(t.id) < 0; });
+    var entry = Store.trashAdd({
+      kind: 'items', scope: 'day', key: key, items: removed,
+      text: removed.length + ' task' + (removed.length > 1 ? 's' : '')
+    });
+    selection = { key: null, ids: [] };
+    syncSelection();
+    Store.saveNow();
+    refresh();
+    UI.toast('Deleted ' + removed.length + ' task' + (removed.length > 1 ? 's' : ''),
+      { action: function () { undoEntry(entry); } });
+  }
+
+  function bulkMove() {
+    var key = selection.key;
+    var ids = selection.ids.slice();
+    if (!ids.length) return;
+    var suggested = D.addDays(key, 1);
+    UI.openModal({
+      title: 'Move ' + ids.length + ' task' + (ids.length > 1 ? 's' : ''),
+      body: '<div class="field"><label for="bulkDate">To</label>' +
+        '<input type="date" id="bulkDate" value="' + suggested + '"></div>' +
+        '<p class="tiny dim" style="margin-top:10px">Estimates, times and tags move with the task.</p>',
+      actions: [
+        { label: 'Cancel', value: null, cls: 'btn-ghost' },
+        {
+          label: 'Move', value: 'go', cls: 'btn', onClick: function () {
+            var to = $('bulkDate').value;
+            if (!D.isKey(to)) { UI.toast('Pick a date'); return false; }
+            if (to === key) { UI.toast('Pick a different day'); return false; }
+            var moved = Store.moveTodos(key, ids, to);
+            selection = { key: null, ids: [] };
+            syncSelection();
+            refresh();
+            UI.toast('Moved ' + moved + ' to ' + D.prettyDay(to));
+          }
+        }
+      ]
     });
   }
 
@@ -1003,6 +1093,105 @@
     });
     if (u.quickNotes) out.push('## Brain dump', '', u.quickNotes, '');
     return out.join('\n');
+  }
+
+  /* ---------------- encrypted backups ---------------- */
+
+  function actExportEncrypted() {
+    if (!global.PlannerCrypto || !PlannerCrypto.supported()) {
+      UI.toast('This browser cannot encrypt backups');
+      return;
+    }
+    UI.openModal({
+      title: 'Encrypted backup',
+      body: '<p class="small">Choose a passphrase. It is never stored anywhere — if you lose it, ' +
+        'the backup cannot be opened again.</p>' +
+        '<div class="field" style="margin-top:12px"><label for="encPass">Passphrase</label>' +
+        '<input type="password" id="encPass" autocomplete="new-password" placeholder="at least 6 characters"></div>' +
+        '<div class="field" style="margin-top:10px"><label for="encPass2">Repeat it</label>' +
+        '<input type="password" id="encPass2" autocomplete="new-password"></div>',
+      actions: [
+        { label: 'Cancel', value: null, cls: 'btn-ghost' },
+        {
+          label: 'Encrypt & download', value: 'go', cls: 'btn', onClick: function () {
+            var a = $('encPass').value || '';
+            var b = $('encPass2').value || '';
+            if (a.length < 6) { UI.toast('Use at least 6 characters'); return false; }
+            if (a !== b) { UI.toast('The two passphrases differ'); return false; }
+            setTimeout(function () { runEncryptedExport(a); }, 80);
+          }
+        }
+      ]
+    });
+  }
+
+  function runEncryptedExport(passphrase) {
+    UI.toast('Encrypting…');
+    global.PlannerCrypto.encrypt(Store.state(), passphrase).then(function (envelope) {
+      UI.download('planner-backup-' + D.todayKey() + '.planner', JSON.stringify(envelope, null, 2), 'application/json');
+      Store.markExported();
+      UI.toast('Encrypted backup downloaded');
+      refresh();
+    }).catch(function (err) {
+      UI.toast(err && err.message ? err.message : 'Could not encrypt the backup');
+    });
+  }
+
+  function actImportEncrypted() {
+    var input = $('importEncFile');
+    if (input) input.click();
+  }
+
+  function handleEncryptedFile(e) {
+    var file = e.target.files && e.target.files[0];
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function (ev) {
+      var text = ev.target.result;
+      e.target.value = '';
+      if (!global.PlannerCrypto || !PlannerCrypto.isEnvelope(text)) {
+        UI.toast('That file is not an encrypted Planner Pro backup');
+        return;
+      }
+      UI.openModal({
+        title: 'Restore encrypted backup',
+        body: '<p class="small">Enter the passphrase this backup was made with.</p>' +
+          '<div class="field" style="margin-top:12px"><label for="decPass">Passphrase</label>' +
+          '<input type="password" id="decPass" autocomplete="current-password"></div>',
+        actions: [
+          { label: 'Cancel', value: null, cls: 'btn-ghost' },
+          {
+            label: 'Decrypt', value: 'go', cls: 'btn', onClick: function () {
+              var pass = $('decPass').value || '';
+              if (!pass) { UI.toast('Enter the passphrase'); return false; }
+              setTimeout(function () { runEncryptedImport(text, pass); }, 80);
+            }
+          }
+        ]
+      });
+    };
+    reader.readAsText(file);
+  }
+
+  function runEncryptedImport(text, passphrase) {
+    UI.toast('Decrypting…');
+    global.PlannerCrypto.decrypt(text, passphrase).then(function (data) {
+      if (!data || !data.users) { UI.toast('That backup contains no profiles'); return; }
+      return UI.confirm({
+        title: 'Replace all data?',
+        message: 'The decrypted backup will replace every profile and plan on this device.',
+        ok: 'Restore', danger: true
+      }).then(function (yes) {
+        if (!yes) return;
+        var res = Store.importJSON(JSON.stringify(data));
+        if (!res.ok) { UI.toast(res.error); return; }
+        UI.toast('Backup restored');
+        showApp();
+        refresh();
+      });
+    }).catch(function (err) {
+      UI.toast(err && err.message ? err.message : 'Could not decrypt the backup');
+    });
   }
 
   function actExportDb() {
@@ -1483,6 +1672,8 @@
         case 'archive-restore': actArchiveRestore(ds.year); break;
         case 'archive-delete': actArchiveDelete(ds.year); break;
         case 'export-db': actExportDb(); break;
+        case 'export-encrypted': actExportEncrypted(); break;
+        case 'import-encrypted': actImportEncrypted(); break;
         case 'import-db': actImportDb(); break;
         case 'export-md': UI.download('planner-export-' + D.todayKey() + '.md', allMarkdown(), 'text/markdown;charset=utf-8'); UI.toast('Markdown exported'); break;
         case 'export-day': actExportDay(ds.key); break;
@@ -1492,6 +1683,12 @@
         case 'trash-delete': actTrashDelete(ds.id); break;
         case 'trash-empty': actTrashEmpty(); break;
         case 'duplicate-day': actDuplicateDay(ds.key); break;
+        case 'select-start': selectStart(ds.key); break;
+        case 'select-cancel': selectCancel(); break;
+        case 'select-toggle': selectToggle(el); break;
+        case 'select-all': selectAll(ds.key); break;
+        case 'bulk-delete': bulkDelete(); break;
+        case 'bulk-move': bulkMove(); break;
         case 'todo-details': actTodoDetails(el); break;
         case 'filter-tag': actGo('#/search/' + encodeURIComponent(ds.tag)); break;
         case 'templates': templatesModal(ds.key || D.todayKey()); break;
@@ -1579,6 +1776,7 @@
       var t = e.target;
       var b = t.dataset && t.dataset.bind;
       if (t.dataset && t.dataset.file === 'import') { handleImportFile(e); return; }
+      if (t.dataset && t.dataset.file === 'import-encrypted') { handleEncryptedFile(e); return; }
       if (!b) return;
 
       if (b === 'day-date') { actGo('#/day/' + (t.value || D.todayKey())); return; }

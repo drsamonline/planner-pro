@@ -98,7 +98,7 @@
         Parts.composer('day', tk, 'Add a task and press Enter…') +
         Parts.loadBar(Store.dayLoad(tk)) +
         Parts.rows(todos, 'day', tk, 'check', 'No tasks yet — add the one thing that matters most.') +
-        (todos.length ? '<div class="row-actions">' +
+        (todos.length ? '<div class="btn-row">' +
           (yOpen ? '<button class="btn btn-ghost btn-sm" data-act="carry-over" data-from="' + yesterday + '" data-to="' + tk + '">' +
             icon('carry') + 'Bring ' + yOpen + ' from yesterday</button>' : '') +
           (st.done ? '<button class="btn btn-quiet btn-sm" data-act="clear-done" data-key="' + tk + '">' + icon('trash') + 'Clear completed</button>' : '') +

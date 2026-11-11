@@ -39,17 +39,33 @@
       h += '<div class="grid g-side">';
 
       /* tasks */
+      var selecting = global.Parts.selectionKey === key;
+      var picked = selecting ? (global.Parts.selectedIds || []).length : 0;
+
       h += '<div class="card"><div class="card-head"><h2>' + icon('check') + 'To-do</h2>' +
+        '<div style="display:flex;gap:8px;align-items:center">' +
         (st.total ? '<span class="pill' + (st.pct === 100 ? ' pill-ok' : '') + '">' + st.done + '/' + st.total + ' · ' + st.pct + '%</span>' : '') +
-        '</div>' +
+        (st.total ? (selecting
+          ? '<button class="btn btn-quiet btn-sm" data-act="select-cancel">Done</button>'
+          : '<button class="btn btn-quiet btn-sm" data-act="select-start" data-key="' + key + '">Select</button>') : '') +
+        '</div></div>' +
         Parts.composer('day', key, 'What needs doing?') +
         Parts.loadBar(Store.dayLoad(key)) +
         Parts.rows(d.todos, 'day', key, 'check', 'Empty list. Add a task above — or enjoy the quiet.') +
-        '<div class="row-actions">' +
-        (prevOpen ? '<button class="btn btn-ghost btn-sm" data-act="carry-over" data-from="' + prev + '" data-to="' + key + '">' +
-          icon('carry') + 'Carry ' + prevOpen + ' unfinished</button>' : '') +
-        (st.done ? '<button class="btn btn-quiet btn-sm" data-act="clear-done" data-key="' + key + '">' + icon('trash') + 'Clear completed</button>' : '') +
-        '</div></div>';
+        (selecting
+          ? '<div class="bulk-bar">' +
+            '<span class="small strong num">' + picked + ' selected</span>' +
+            '<button class="btn btn-quiet btn-sm" data-act="select-all" data-key="' + key + '">Select all</button>' +
+            '<span class="spacer"></span>' +
+            '<button class="btn btn-ghost btn-sm" data-act="bulk-move"' + (picked ? '' : ' disabled') + '>' + icon('carry') + 'Move…</button>' +
+            '<button class="btn btn-danger btn-sm" data-act="bulk-delete"' + (picked ? '' : ' disabled') + '>' + icon('trash') + 'Delete</button>' +
+            '</div>'
+          : '<div class="btn-row">' +
+            (prevOpen ? '<button class="btn btn-ghost btn-sm" data-act="carry-over" data-from="' + prev + '" data-to="' + key + '">' +
+              icon('carry') + 'Carry ' + prevOpen + ' unfinished</button>' : '') +
+            (st.done ? '<button class="btn btn-quiet btn-sm" data-act="clear-done" data-key="' + key + '">' + icon('trash') + 'Clear completed</button>' : '') +
+            '</div>') +
+        '</div>';
 
       /* schedule + notes */
       h += '<div class="grid" style="gap:var(--gap)">' +

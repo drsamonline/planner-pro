@@ -439,6 +439,20 @@ label { font-size: 12px; color: var(--text-2); font-weight: 550; display: block;
   border-radius: var(--r-sm); font-size: 13.5px;
 }
 
+/* ---------- bulk selection ---------- */
+.select-box {
+  width: 16px; height: 16px; flex: none; border-radius: 4px;
+  border: 1.5px solid var(--line-strong); display: grid; place-items: center;
+  color: transparent; padding: 0; background: transparent;
+}
+.select-box .i { width: 11px; height: 11px; stroke-width: 3; }
+.select-box.on { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.row.picked { background: var(--accent-soft); }
+.bulk-bar {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line);
+}
+
 /* ---------- notices ---------- */
 .notice {
   display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
@@ -503,6 +517,7 @@ label { font-size: 12px; color: var(--text-2); font-weight: 550; display: block;
 }
 .row.done .row-text { color: var(--text-3); text-decoration: line-through; text-decoration-thickness: 1px; }
 .row-actions { display: flex; gap: 2px; opacity: 0; transition: opacity .12s; }
+.btn-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 .row:hover .row-actions, .row:focus-within .row-actions { opacity: 1; }
 .row-actions .icon-btn { width: 28px; height: 28px; border-color: transparent; background: transparent; }
 .row-actions .icon-btn:hover { background: var(--surface-3); }

@@ -44,7 +44,7 @@ html = html.replace('</title>', `</title>\n<link rel="icon" href="data:image/svg
 /* --- a small banner so the file explains itself --- */
 html = html.replace('<body data-theme="midnight">', `<body data-theme="midnight">
 <!--
-  Planner Pro v14.4.0 — single-file build
+  Planner Pro v14.5.0 — single-file build
   Copyright 2026 Dr. Sohil Momin · PolyForm Noncommercial 1.0.0
   This file is the whole app. Open it in any browser; it needs no server.
   Source: https://github.com/drsamonline/planner-pro

@@ -685,6 +685,21 @@
     return { minutes: total, tasks: estimated, capacity: capacity(), over: total > capacity() };
   }
 
+  /** Move a set of todos from one day to another, preserving their fields. */
+  function moveTodos(fromKey, ids, toKey) {
+    var from = day(fromKey, true);
+    var to = day(toKey, true);
+    var moved = [];
+    from.todos = from.todos.filter(function (t) {
+      if (ids.indexOf(t.id) < 0) return true;
+      to.todos.push(t);
+      moved.push(t.id);
+      return false;
+    });
+    if (moved.length) saveNow();
+    return moved.length;
+  }
+
   /* ---------------- insight aggregates ---------------- */
 
   /** Every day of a calendar year, with its completion counts. */
@@ -812,7 +827,7 @@
     state: function () { return state; },
     user: user, users: users, hasUser: hasUser, addUser: addUser, auth: auth, lock: lock,
     renameUser: renameUser, changePin: changePin, removeUser: removeUser,
-    day: day, peekDay: peekDay, week: week, month: month, year: year,
+    day: day, peekDay: peekDay, week: week, month: month, year: year, moveTodos: moveTodos,
     archiveYear: archiveYear, restoreArchive: restoreArchive,
     removeArchive: removeArchive, autoArchive: autoArchive,
     exportJSON: exportJSON, importJSON: importJSON,

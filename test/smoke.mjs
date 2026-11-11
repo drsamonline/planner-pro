@@ -766,6 +766,109 @@ await step('I opens Insights', async () => {
 });
 
 /* ------------------------------------------------------------------ */
+console.log('\n— encrypted backups & bulk actions —');
+await step('encrypted backup round-trips', async () => {
+  const res = await page.evaluate(async () => {
+    const state = Store.state();
+    const env = await PlannerCrypto.encrypt(state, 'correct horse battery');
+    const back = await PlannerCrypto.decrypt(env, 'correct horse battery');
+    return {
+      format: env.format,
+      hasSalt: !!env.kdf.salt,
+      hasIv: !!env.cipher.iv,
+      iterations: env.kdf.iterations,
+      plaintextLeaked: JSON.stringify(env).includes('Sohil'),
+      same: JSON.stringify(back) === JSON.stringify(state),
+      users: Object.keys(back.users).length
+    };
+  });
+  eq(res.format, 'planner-pro-encrypted');
+  ok(res.hasSalt && res.hasIv, 'salt/iv missing from the envelope');
+  ok(res.iterations >= 100000, 'PBKDF2 iterations too low');
+  eq(res.plaintextLeaked, false, 'the envelope leaked plaintext');
+  ok(res.same, 'decrypted payload differs from the original');
+  ok(res.users > 0, 'no profiles in the payload');
+});
+await step('a wrong passphrase is rejected', async () => {
+  const message = await page.evaluate(async () => {
+    const env = await PlannerCrypto.encrypt({ hello: 'world' }, 'rightpass');
+    try {
+      await PlannerCrypto.decrypt(env, 'wrongpass');
+      return 'decrypted anyway';
+    } catch (e) { return e.message; }
+  });
+  ok(/wrong passphrase/i.test(message), 'expected a wrong-passphrase error, got: ' + message);
+});
+await step('envelope detection is strict', async () => {
+  const good = await page.evaluate(() => PlannerCrypto.isEnvelope('{"format":"planner-pro-encrypted","kdf":{},"cipher":{},"data":"x"}'));
+  const plain = await page.evaluate(() => PlannerCrypto.isEnvelope('{"users":{}}'));
+  const junk = await page.evaluate(() => PlannerCrypto.isEnvelope('not json'));
+  eq(good, true, 'valid envelope not recognised');
+  eq(plain, false, 'plain database treated as encrypted');
+  eq(junk, false, 'junk treated as encrypted');
+});
+await step('settings offers an encrypted backup', async () => {
+  await nav('settings');
+  ok(await visible('[data-act="export-encrypted"]'), 'encrypted export button missing');
+  ok(await visible('[data-act="import-encrypted"]'), 'encrypted restore button missing');
+  await page.click('[data-act="export-encrypted"]');
+  await sel('#encPass');
+  ok(await visible('#encPass2'), 'passphrase confirmation missing');
+  await page.keyboard.press('Escape');
+  await sleep(250);
+});
+await step('bulk select deletes and undoes', async () => {
+  await page.evaluate(() => {
+    const d = Store.day('2026-09-09', true);
+    d.todos = [
+      { id: 'b1', text: 'Alpha', done: false },
+      { id: 'b2', text: 'Beta', done: false },
+      { id: 'b3', text: 'Gamma', done: false }
+    ];
+    Store.saveNow();
+    location.hash = '#/day/2026-09-09';
+  });
+  await sleep(450);
+  await page.click('[data-act="select-start"]');
+  await sleep(350);
+  eq(await count('.select-box'), 3, 'select boxes missing');
+
+  await page.click('.rows .row:nth-child(1) .row-text');
+  await sleep(250);
+  await page.click('.rows .row:nth-child(2) .row-text');
+  await sleep(250);
+  const bar = await textOf('.bulk-bar');
+  ok(bar.includes('2 selected'), 'selection count wrong: ' + bar);
+
+  await clickAct('bulk-delete');
+  await sleep(400);
+  eq(await page.evaluate(() => Store.day('2026-09-09', true).todos.length), 1, 'bulk delete failed');
+  ok(await visible('.toast-action'), 'bulk delete should be undoable');
+  await page.click('.toast-action');
+  await sleep(400);
+  eq(await page.evaluate(() => Store.day('2026-09-09', true).todos.length), 3, 'undo did not restore');
+});
+await step('bulk move sends tasks to another day', async () => {
+  await page.click('[data-act="select-start"]');
+  await sleep(350);
+  await page.click('.rows .row:nth-child(1) .row-text');
+  await sleep(250);
+  await clickAct('bulk-move');
+  await sel('#bulkDate');
+  await page.$eval('#bulkDate', (el) => { el.value = '2026-09-10'; });
+  const btns = await page.$$('#modalActions .btn');
+  await btns[btns.length - 1].click();
+  await sleep(450);
+
+  const res = await page.evaluate(() => ({
+    from: Store.day('2026-09-09', true).todos.length,
+    to: Store.day('2026-09-10', true).todos.map((t) => t.text)
+  }));
+  eq(res.from, 2, 'source should lose one task');
+  eq(res.to.length, 1, 'target should gain one task');
+});
+
+/* ------------------------------------------------------------------ */
 console.log('\n— week view —');
 await step('renders 7 day columns', async () => {
   await nav('week');

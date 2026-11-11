@@ -9,8 +9,19 @@
     return global.Parts && global.Parts.editingId === id;
   }
 
+  function selecting(key) {
+    return global.Parts && global.Parts.selectionKey === key;
+  }
+
+  function isSelected(id) {
+    return !!(global.Parts && (global.Parts.selectedIds || []).indexOf(id) >= 0);
+  }
+
   function textCell(t, scope, key) {
     var attrs = ' data-scope="' + esc(scope) + '" data-key="' + esc(key) + '" data-id="' + esc(t.id) + '"';
+    if (selecting(key)) {
+      return '<button class="row-text" data-act="select-toggle"' + attrs + '>' + esc(t.text) + '</button>';
+    }
     if (editingNow(t.id)) {
       return '<input class="row-input" type="text" value="' + esc(t.text) + '" data-bind="inline-edit"' +
         attrs + ' aria-label="Edit text" autocomplete="off">';
@@ -32,9 +43,17 @@
 
   function todoRow(t, scope, key) {
     var attrs = ' data-scope="' + esc(scope) + '" data-key="' + esc(key) + '" data-id="' + esc(t.id) + '"';
-    return '<div class="row' + (t.done ? ' done' : '') + (t.prio && !t.done ? ' prio' : '') + '" data-row-id="' + esc(t.id) + '">' +
-      '<button class="drag" data-act="drag-start"' + attrs + ' title="Drag to reorder" aria-label="Reorder">' +
-      '<span></span><span></span><span></span></button>' +
+    var sel = selecting(key);
+    var picked = isSelected(t.id);
+    var handle = sel
+      ? '<button class="select-box' + (picked ? ' on' : '') + '" data-act="select-toggle"' + attrs +
+        ' aria-label="' + (picked ? 'Deselect' : 'Select') + '" aria-pressed="' + picked + '">' + icon('check') + '</button>'
+      : '<button class="drag" data-act="drag-start"' + attrs + ' title="Drag to reorder" aria-label="Reorder">' +
+        '<span></span><span></span><span></span></button>';
+
+    return '<div class="row' + (t.done ? ' done' : '') + (t.prio && !t.done ? ' prio' : '') +
+      (picked ? ' picked' : '') + '" data-row-id="' + esc(t.id) + '">' +
+      handle +
       '<button class="check" data-act="todo-toggle"' + attrs + ' aria-label="' +
       (t.done ? 'Mark not done' : 'Mark done') + '">' + icon('check') + '</button>' +
       '<div class="row-main">' + textCell(t, scope, key) + metaPills(t) + '</div>' +
@@ -92,7 +111,7 @@
   }
 
   global.Parts = {
-    editingId: null, loadBar: loadBar,
+    editingId: null, selectionKey: null, selectedIds: [], loadBar: loadBar,
     todoRow: todoRow, goalRow: goalRow, blockRow: blockRow,
     composer: composer, rows: rows
   };
