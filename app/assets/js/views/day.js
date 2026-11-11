@@ -80,6 +80,26 @@
             }).map(function (b) { return Parts.blockRow(b, key, false); }).join('') + '</div>'
           : UI.empty('clock', 'Blocks turn a to-do list into a plan.')) +
         '</div>' +
+        '<div class="card"><div class="card-head"><h2>' + icon('paperclip') + 'Attachments</h2>' +
+        '<span class="pill num">' + ((d.files || []).length || '0') + '</span></div>' +
+        (Store.attachmentsSupported()
+          ? '<div class="attach-list">' +
+            ((d.files || []).length
+              ? (d.files || []).map(function (f) {
+                return '<div class="attach">' +
+                  '<span class="attach-icon">' + icon(f.type.indexOf('image/') === 0 ? 'image' : 'note') + '</span>' +
+                  '<button class="attach-name" data-act="attach-open" data-key="' + key + '" data-id="' + esc(f.id) + '">' +
+                  esc(f.name) + '</button>' +
+                  '<span class="tiny dim">' + UI.fmtBytes(f.size) + '</span>' +
+                  '<button class="icon-btn danger flat" data-act="attach-del" data-key="' + key + '" data-id="' + esc(f.id) +
+                  '" aria-label="Remove attachment">' + icon('x') + '</button></div>';
+              }).join('')
+              : '<p class="tiny dim">Scan a referral, drop a PDF, keep the receipt. Files stay in this browser.</p>') +
+            '</div>' +
+            '<label class="btn btn-ghost btn-sm" style="margin-top:8px;cursor:pointer">' + icon('upload') + 'Add a file' +
+            '<input type="file" data-file="attach" data-key="' + key + '" multiple hidden></label>'
+          : '<p class="tiny dim">Attachments need IndexedDB, which this browser is not giving the app.</p>') +
+        '</div>' +
         '<div class="card"><div class="card-head"><h2>' + icon('note') + 'Notes &amp; reflection</h2>' +
         '<button class="btn btn-quiet btn-sm" data-act="day-review" data-key="' + key + '">' +
         (d.review && d.review.at ? 'Edit review' : 'Review day') + '</button></div>' +

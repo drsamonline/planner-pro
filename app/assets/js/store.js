@@ -54,6 +54,8 @@
 
   var DB_NAME = 'planner-pro';
   var DB_STORE = 'docs';
+  var BLOB_STORE = 'blobs';
+  var DB_VERSION = 2;
   var dbPromise = null;
   var backend = 'ls';          // 'idb' or 'ls'
   var lastWriteError = null;
@@ -70,10 +72,11 @@
     if (dbPromise) return dbPromise;
     dbPromise = new Promise(function (resolve, reject) {
       if (!global.indexedDB) { reject(new Error('no-indexeddb')); return; }
-      var req = global.indexedDB.open(DB_NAME, 1);
+      var req = global.indexedDB.open(DB_NAME, DB_VERSION);
       req.onupgradeneeded = function () {
         var db = req.result;
         if (!db.objectStoreNames.contains(DB_STORE)) db.createObjectStore(DB_STORE);
+        if (!db.objectStoreNames.contains(BLOB_STORE)) db.createObjectStore(BLOB_STORE);
       };
       req.onsuccess = function () { resolve(req.result); };
       req.onerror = function () { reject(req.error || new Error('idb-open-failed')); };
@@ -82,11 +85,11 @@
     return dbPromise;
   }
 
-  function idb(mode, fn) {
+  function idb(mode, fn, storeName) {
     return openDb().then(function (db) {
       return new Promise(function (resolve, reject) {
-        var tx = db.transaction(DB_STORE, mode);
-        var request = fn(tx.objectStore(DB_STORE));
+        var tx = db.transaction(storeName || DB_STORE, mode);
+        var request = fn(tx.objectStore(storeName || DB_STORE));
         tx.oncomplete = function () { resolve(request ? request.result : undefined); };
         tx.onerror = function () { reject(tx.error || new Error('idb-tx-failed')); };
         tx.onabort = function () { reject(tx.error || new Error('idb-tx-aborted')); };
@@ -899,6 +902,59 @@
     return days.map(function (d) { return names[d]; }).join(', ');
   }
 
+  /* ---------------- attachments ----------------
+     Files are blobs in IndexedDB, keyed by id; the day only holds metadata, so
+     the document stays small and the JSON backup stays readable. Attachments are
+     deliberately NOT part of the JSON export — they would turn a 20 KB backup
+     into megabytes of base64. Each one can be opened and saved individually. */
+
+  var MAX_ATTACHMENT = 8 * 1024 * 1024;
+
+  function attachmentsSupported() {
+    return backend === 'idb' && typeof global.indexedDB !== 'undefined';
+  }
+
+  function attachFile(dayKey, file) {
+    if (!attachmentsSupported()) return Promise.resolve({ ok: false, error: 'Attachments need IndexedDB' });
+    if (!file) return Promise.resolve({ ok: false, error: 'No file' });
+    if (file.size > MAX_ATTACHMENT) return Promise.resolve({ ok: false, error: 'Files are limited to 8 MB' });
+
+    var d = day(dayKey, true);
+    var id = uid();
+    return file.arrayBuffer().then(function (buf) {
+      return idb('readwrite', function (store) {
+        return store.put({ name: file.name, type: file.type || 'application/octet-stream', size: file.size, buf: buf }, 'file:' + id);
+      }, BLOB_STORE);
+    }).then(function () {
+      if (!Array.isArray(d.files)) d.files = [];
+      d.files.push({
+        id: id,
+        name: file.name,
+        type: file.type || 'application/octet-stream',
+        size: file.size,
+        addedAt: Date.now()
+      });
+      saveNow();
+      return { ok: true, id: id };
+    }).catch(function (e) {
+      return { ok: false, error: 'Could not store that file' };
+    });
+  }
+
+  function getAttachment(id) {
+    return idb('readonly', function (store) { return store.get('file:' + id); }, BLOB_STORE);
+  }
+
+  function removeAttachment(dayKey, id) {
+    var d = peekDay(dayKey);
+    if (d && Array.isArray(d.files)) {
+      d.files = d.files.filter(function (f) { return f.id !== id; });
+      saveNow();
+    }
+    return idb('readwrite', function (store) { return store.delete('file:' + id); }, BLOB_STORE)
+      .catch(function () { return null; });
+  }
+
   /* ---------------- data health ----------------
      Conservative on purpose: a check may report anything, but a repair only
      fills in missing ids, unlinks dangling recurring references and prunes the
@@ -1277,6 +1333,8 @@
     toggleRecurring: toggleRecurring, ensureRecurring: ensureRecurring, repeatLabel: repeatLabel,
     templates: templates, addTemplate: addTemplate, removeTemplate: removeTemplate,
     healthCheck: healthCheck, repair: repair, importRows: importRows,
+    attachFile: attachFile, getAttachment: getAttachment, removeAttachment: removeAttachment,
+    attachmentsSupported: attachmentsSupported, MAX_ATTACHMENT: MAX_ATTACHMENT,
     reviewDay: reviewDay, setReviewDay: setReviewDay, reviewDue: reviewDue,
     snoozeReview: snoozeReview, weekSummary: weekSummary,
     capacity: capacity, setCapacity: setCapacity, dayLoad: dayLoad,

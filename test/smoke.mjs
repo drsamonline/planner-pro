@@ -1580,10 +1580,100 @@ await step('desktop: rail is visible', async () => {
 });
 
 /* ------------------------------------------------------------------ */
+console.log('\n— month view —');
+await step('the month grid renders every day of the month', async () => {
+  await page.evaluate(() => {
+    const d = Store.day('2026-11-17', true);
+    d.todos = [{ id: 'm1', text: 'First thing', done: true }, { id: 'm2', text: 'Second thing', done: false }];
+    Store.saveNow();
+    location.hash = '#/month/2026-11';
+  });
+  await sleep(500);
+  const res = await page.evaluate(() => ({
+    cells: document.querySelectorAll('.mcell:not(.is-pad)').length,
+    tasks: document.querySelectorAll('.mcell-task').length,
+    title: document.querySelector('#view .datebar strong').textContent,
+    hasToday: !!document.querySelector('.mcell.is-today')
+  }));
+  eq(res.cells, 30, 'November has 30 days');
+  ok(res.tasks >= 2, 'tasks not shown in the grid');
+  ok(res.title.indexOf('November') >= 0, 'month title wrong: ' + res.title);
+  ok(res.hasToday, 'today should be marked');
+});
+await step('a month cell opens that day', async () => {
+  await page.click('.mcell:not(.is-pad):not(.is-today)');
+  await sleep(450);
+  ok((await page.evaluate(() => location.hash)).indexOf('#/day/2026-11-') >= 0, 'cell did not open the day');
+});
+await step('M opens the month and the arrows page it', async () => {
+  await page.evaluate(() => { document.activeElement.blur(); location.hash = '#/today'; });
+  await sleep(300);
+  await page.keyboard.press('KeyM');
+  await sleep(450);
+  ok((await page.evaluate(() => location.hash)).indexOf('#/month/') >= 0, 'shortcut failed');
+
+  const before = await page.$eval('#view .datebar strong', (el) => el.textContent);
+  await page.click('#view .datebar .icon-btn[aria-label="Previous month"]');
+  await sleep(450);
+  const after = await page.$eval('#view .datebar strong', (el) => el.textContent);
+  ok(after !== before, 'month did not change');
+});
+
+/* ------------------------------------------------------------------ */
+console.log('\n— attachments —');
+await step('a file is stored as a blob with metadata on the day', async () => {
+  const res = await page.evaluate(async () => {
+    const file = new File([new Uint8Array([1, 2, 3, 4, 5])], 'note.txt', { type: 'text/plain' });
+    const added = await Store.attachFile('2026-12-15', file);
+    const rec = await Store.getAttachment(added.id);
+    const day = Store.peekDay('2026-12-15');
+    return {
+      ok: added.ok,
+      name: rec && rec.name,
+      size: rec && rec.size,
+      bytes: rec && rec.buf ? rec.buf.byteLength : 0,
+      meta: (day.files || []).length
+    };
+  });
+  eq(res.ok, true, 'attach failed');
+  eq(res.name, 'note.txt', 'name not kept');
+  eq(res.size, 5, 'size not kept');
+  eq(res.bytes, 5, 'blob bytes not stored');
+  eq(res.meta, 1, 'metadata not added to the day');
+});
+await step('the file input adds an attachment and it can be removed', async () => {
+  await page.evaluate(() => { location.hash = '#/day/2026-12-16'; });
+  await sleep(450);
+
+  const input = await page.$('input[data-file="attach"]');
+  ok(input, 'no file input on the day view');
+  await input.uploadFile('/tmp/attach-test.txt');
+  await sleep(700);
+
+  const after = await page.evaluate(() => (Store.peekDay('2026-12-16').files || []).map((f) => f.name));
+  eq(after.length, 1, 'file was not attached');
+  eq(after[0], 'attach-test.txt', 'wrong name');
+  ok(await visible('.attach-name'), 'attachment row missing');
+
+  await page.click('[data-act="attach-del"]');
+  await sleep(500);
+  eq(await page.evaluate(() => (Store.peekDay('2026-12-16').files || []).length), 0, 'attachment not removed');
+});
+await step('oversized files are refused', async () => {
+  const res = await page.evaluate(async () => {
+    const big = new File([new Uint8Array(9 * 1024 * 1024)], 'huge.bin', { type: 'application/octet-stream' });
+    const out = await Store.attachFile('2026-12-15', big);
+    return out;
+  });
+  eq(res.ok, false, 'a 9 MB file should be refused');
+  ok(/8 MB/.test(res.error || ''), 'the refusal should name the limit: ' + res.error);
+});
+
+/* ------------------------------------------------------------------ */
 console.log('\n— storage backend —');
 await step('the document lives in IndexedDB, not localStorage', async () => {
   const res = await page.evaluate(() => new Promise((resolve) => {
-    const req = indexedDB.open('planner-pro', 1);
+    const req = indexedDB.open('planner-pro');   // whatever version the app created
     req.onerror = () => resolve({ error: true });
     req.onsuccess = () => {
       const db = req.result;

@@ -26,7 +26,7 @@
 
   global.Views.about = {
     title: 'About',
-    subtitle: function () { return 'Version 15.0 · offline & local-first'; },
+    subtitle: function () { return 'Version 15.1 · offline & local-first'; },
 
     render: function () {
       var h = '';
@@ -35,7 +35,7 @@
         '<div><strong>Planner Pro</strong><small>Day · week · month · year planner</small></div></div>' +
         '<p class="small muted">A planner that behaves like a tool, not a website. It runs entirely in your browser, works with no internet connection, and stores every task and note on this device — no account, no analytics, no server.</p>' +
         '<div class="btn-row">' +
-        '<span class="pill">v15.0</span><span class="pill">Offline-first</span><span class="pill">Multi-profile</span><span class="pill">No tracking</span>' +
+        '<span class="pill">v15.1</span><span class="pill">Offline-first</span><span class="pill">Multi-profile</span><span class="pill">No tracking</span>' +
         '</div></div>';
 
       h += '<div class="grid g2">' +
@@ -57,6 +57,7 @@
         }).join('') + '</div></div>';
 
       h += '<div class="card"><div class="card-head"><h2>' + icon('note') + 'How your data works</h2></div>' +
+        '<p class="small muted">Attachments are blobs in IndexedDB, kept out of the JSON backup on purpose — open one any time to save it. Files are capped at 8 MB.</p>' +
         '<p class="small muted">Data lives in IndexedDB, gzip-compressed where the browser supports it, with localStorage as the fallback for file:// and private windows. The 5 MB browser quota is no longer the ceiling.</p>' +
         '<p class="small muted">The month grid in the rail is a month at a glance: a dot for every day with work, a ring on today. On a phone the same grid sits at the bottom of Today.</p>' +
         '<p class="small muted">There is no networking code in this app — no fetch, no XHR, no sockets. The only way data leaves is a file you export yourself.</p>' +

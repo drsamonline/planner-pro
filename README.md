@@ -14,9 +14,9 @@ Day, week, month and year planning in one quiet screen. Multi-profile, PIN-locke
 </p>
 
 <p align="center">
-  <img alt="Version" src="https://img.shields.io/badge/version-15.0.0-8B5CF6">
+  <img alt="Version" src="https://img.shields.io/badge/version-15.1.0-8B5CF6">
   <img alt="License" src="https://img.shields.io/badge/license-PolyForm%20Noncommercial%201.0.0-22D3EE">
-  <img alt="Tests" src="https://img.shields.io/badge/e2e%20checks-114%20passing-34D399">
+  <img alt="Tests" src="https://img.shields.io/badge/e2e%20checks-120%20passing-34D399">
   <img alt="Offline" src="https://img.shields.io/badge/works%20offline-100%25-34D399">
   <img alt="No tracking" src="https://img.shields.io/badge/tracking-none-lightgrey">
   <img alt="Dependencies" src="https://img.shields.io/badge/runtime%20deps-zero-brightgreen">
@@ -88,6 +88,8 @@ and stores everything on your device.
 - **CSV import** — `date,text,done,tags` pasted or chosen as a file; duplicates are skipped.
 - **Data health** — a check for missing ids, duplicates, dangling repeats and trash; repair fixes what can be fixed and never deletes a day or a note.
 - **Panic blur** — blur the planner when the window loses focus.
+- **Month view** — the whole month as a 7-column grid: tasks per day, done ones struck through, block dots, the month's focus above.
+- **Attachments** — drop a PDF or a photo on a day. Files are blobs in IndexedDB (8 MB cap), listed with name and size, opened or removed individually. Kept out of the JSON backup on purpose.
 - **IndexedDB storage** — the document lives in IndexedDB, gzip-compressed where `CompressionStream` exists, with localStorage as the fallback for `file://` and private windows. Existing localStorage documents migrate on first load.
 - **Month at a glance** — a mini calendar in the rail (and at the bottom of Today on phones) with a dot for every planned day.
 - **Share into the planner** — Chrome on Android can share text straight in; it opens quick add, prefilled.
@@ -200,7 +202,7 @@ date, so a plan belongs to *one* week instead of repeating every week.
 
 ```bash
 npm install          # dev tooling only: puppeteer-core + electron-builder
-npm test             # 114 end-to-end checks in headless Chromium
+npm test             # 120 end-to-end checks in headless Chromium
 npm run build:single # one portable planner-pro.html
 npm run build:web    # zip of the offline web build in dist/
 ```

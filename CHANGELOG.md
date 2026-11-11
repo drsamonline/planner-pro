@@ -4,6 +4,25 @@ All notable changes to Planner Pro. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [semantic versioning](https://semver.org/).
 
+## [15.1.0] — 2026-11-11
+
+The two features the storage work was holding back: files on a day, and the month
+as a grid. **Tier C is complete except for the items you dropped.**
+
+### Added
+
+- **Attachments.** Drop a PDF, a photo or a scan onto a day. Files are stored as blobs in a new IndexedDB store (`blobs`, database version 2) with only metadata on the day, so the document stays small. Each is listed with name and size, opens (downloads) on click, and can be removed. Capped at 8 MB per file.
+- **Month view** (`#/month/2026-11`, the rail, or `M`): a seven-column grid of the month with each day's first three tasks, done ones struck through, a dot for a scheduled block, the completion count, and the month's focus above the grid. Clicking a cell opens that day; arrows page months; on a phone the grid becomes a list.
+
+### Notes
+
+- Attachments are deliberately **not** part of the JSON or encrypted backup — a handful of photos would turn a 20 KB backup into megabytes of base64. Each file can be saved individually from the list.
+- The new grid class is `mcal-grid`; the Year view already owned `.month-grid` for its twelve month cards, and the first version of this view silently inherited its four-column layout. Caught by measuring the rendered grid rather than by reading the CSS.
+
+### Verified
+
+- The end-to-end suite grew from 114 to **120 checks**: a file stored as a blob with metadata, the file input adding and removing one, a 9 MB file refused with the limit named, the month grid rendering 30 days for November with tasks and a today marker, a cell opening its day, and `M` plus the arrows paging months.
+
 ## [15.0.0] — 2026-11-11
 
 The document moves out of localStorage. A 5 MB quota shared with every other

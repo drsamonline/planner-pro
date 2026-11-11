@@ -9,6 +9,7 @@
     { id: 'today', label: 'Today', icon: 'today', href: '#/today' },
     { id: 'day', label: 'Day', icon: 'day', href: '#/day' },
     { id: 'week', label: 'Week', icon: 'week', href: '#/week' },
+    { id: 'month', label: 'Month', icon: 'month', href: '#/month' },
     { id: 'year', label: 'Year', icon: 'year', href: '#/year' },
     { id: 'archive', label: 'Archive', icon: 'archive', href: '#/archive' },
     { id: 'insights', label: 'Insights', icon: 'chart', href: '#/insights' },
@@ -362,6 +363,7 @@
     if (href === '#/day') href = '#/day/' + D.todayKey();
     else if (href === '#/week') href = '#/week/' + D.weekStartKey(D.todayKey(), (Store.user() || {}).weekStart);
     else if (href === '#/year') href = '#/year/' + new Date().getFullYear();
+    if (href === '#/month') href = '#/month/' + D.monthKey(D.todayKey());
     if (location.hash === href) route();
     else location.hash = href;
   }
@@ -749,6 +751,53 @@
     refresh();
     var again = document.querySelector('form[data-form="add-sub"][data-id="' + f.item.id + '"] input');
     if (again) again.focus();
+  }
+
+  /* ---------------- attachments ---------------- */
+
+  function handleAttachFiles(e) {
+    var input = e.target;
+    var key = input.dataset.key;
+    var files = Array.prototype.slice.call(input.files || []);
+    input.value = '';
+    if (!files.length) return;
+
+    var done = 0, failed = 0;
+    var chain = Promise.resolve();
+    files.forEach(function (file) {
+      chain = chain.then(function () {
+        return Store.attachFile(key, file).then(function (res) {
+          if (res.ok) done++; else failed++;
+        });
+      });
+    });
+    chain.then(function () {
+      refresh();
+      if (failed) UI.toast('Added ' + done + ', skipped ' + failed);
+      else UI.toast('Added ' + done + ' file' + (done === 1 ? '' : 's'));
+    });
+  }
+
+  function actAttachOpen(el) {
+    Store.getAttachment(el.dataset.id).then(function (record) {
+      if (!record || !record.buf) { UI.toast('That file is missing'); return; }
+      var blob = new Blob([record.buf], { type: record.type });
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url;
+      a.download = record.name || 'attachment';
+      a.style.display = 'none';
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(function () { document.body.removeChild(a); URL.revokeObjectURL(url); }, 800);
+    });
+  }
+
+  function actAttachDel(el) {
+    Store.removeAttachment(el.dataset.key, el.dataset.id).then(function () {
+      refresh();
+      UI.toast('Attachment removed');
+    });
   }
 
   /* ---------------- data health ---------------- */
@@ -2078,6 +2127,7 @@
       { label: 'Go to Day', hint: 'D', icon: 'day', run: function () { actGo('#/day/' + D.todayKey()); } },
       { label: 'Go to Week', hint: 'W', icon: 'week', run: function () { actGo('#/week/' + D.weekStartKey(D.todayKey(), Store.user().weekStart)); } },
       { label: 'Go to Year', hint: 'Y', icon: 'year', run: function () { actGo('#/year/' + new Date().getFullYear()); } },
+      { label: 'Go to Month', hint: 'M', icon: 'month', run: function () { actGo('#/month/' + D.monthKey(D.todayKey())); } },
       { label: 'Go to Archive', hint: 'A', icon: 'archive', run: function () { actGo('#/archive'); } },
       { label: 'Go to Insights', hint: 'I', icon: 'chart', run: function () { actGo('#/insights/' + new Date().getFullYear()); } },
       { label: 'Settings', icon: 'settings', run: function () { actGo('#/settings'); } },
@@ -2286,6 +2336,8 @@
         case 'row-expand': actRowExpand(el); break;
         case 'sub-toggle': actSubToggle(el); break;
         case 'sub-del': actSubDel(el); break;
+        case 'attach-open': actAttachOpen(el); break;
+        case 'attach-del': actAttachDel(el); break;
         case 'data-health': actHealth(); break;
         case 'import-csv': actImportCsv(); break;
         case 'focus-start': startFocus(ds.minutes || 25, currentBlockLabel(ds.key)); break;
@@ -2390,6 +2442,7 @@
       var b = t.dataset && t.dataset.bind;
       if (t.dataset && t.dataset.file === 'import') { handleImportFile(e); return; }
       if (t.dataset && t.dataset.file === 'import-encrypted') { handleEncryptedFile(e); return; }
+      if (t.dataset && t.dataset.file === 'attach') { handleAttachFiles(e); return; }
       if (!b) return;
 
       if (b === 'day-date') { actGo('#/day/' + (t.value || D.todayKey())); return; }
@@ -2480,6 +2533,7 @@
         if (k === 't') { actGo('#/today'); return; }
         if (k === 'd') { actGo('#/day/' + D.todayKey()); return; }
         if (k === 'w') { actGo('#/week/' + D.weekStartKey(D.todayKey(), Store.user().weekStart)); return; }
+        if (k === 'm') { actGo('#/month/' + D.monthKey(D.todayKey())); return; }
         if (k === 'y') { actGo('#/year/' + new Date().getFullYear()); return; }
         if (k === 'a') { actGo('#/archive'); return; }
         if (k === 'i') { actGo('#/insights/' + new Date().getFullYear()); return; }
