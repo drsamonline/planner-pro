@@ -966,6 +966,110 @@ await step('a short drag is not a swipe', async () => {
 });
 
 /* ------------------------------------------------------------------ */
+console.log('\n— subtasks, CSV, health & panic blur —');
+await step('subtasks can be added, ticked and counted', async () => {
+  await page.evaluate(() => {
+    const d = Store.day('2026-12-01', true);
+    d.todos = [{ id: 'st1', text: 'Ship the release', done: false }];
+    Store.saveNow();
+    location.hash = '#/day/2026-12-01';
+  });
+  await sleep(450);
+
+  await page.click('.rows .row .sub-toggle');
+  await sleep(350);
+  ok(await visible('.sub-add input'), 'step input not revealed');
+
+  await page.type('.sub-add input', 'Write notes');
+  await page.keyboard.press('Enter');
+  await sleep(400);
+  await page.type('.sub-add input', 'Tag the build');
+  await page.keyboard.press('Enter');
+  await sleep(400);
+
+  const subs = await page.evaluate(() => (Store.day('2026-12-01', true).todos[0].sub || []).map((x) => x.text));
+  eq(subs.join('|'), 'Write notes|Tag the build', 'subtasks not stored');
+
+  await page.click('.sub-row .check');
+  await sleep(350);
+  const done = await page.evaluate(() => Store.day('2026-12-01', true).todos[0].sub[0].done);
+  eq(done, true, 'subtask did not tick');
+  ok((await textOf('.pill-sub')).indexOf('1/2') >= 0, 'count pill wrong');
+});
+await step('CSV import parses quotes and merges by day', async () => {
+  const res = await page.evaluate(() => {
+    const rows = PlannerDebug.parseCsv('date,text,done,tags\n2026-12-05,"Call the clinic, again",false,health\n2026-12-05,Write notes,true,\n');
+    return rows;
+  });
+  eq(res.length, 3, 'parser should keep the header and 2 rows');
+  eq(res[1][1], 'Call the clinic, again', 'quoted comma lost');
+
+  const imported = await page.evaluate(() => {
+    const rows = [
+      { date: '2026-12-05', text: 'Call the clinic, again', done: false, tags: ['health'] },
+      { date: '2026-12-05', text: 'Write notes', done: true, tags: [] }
+    ];
+    const first = Store.importRows(rows);
+    const again = Store.importRows(rows);          // idempotent by text
+    return { first, again, count: Store.day('2026-12-05', true).todos.length };
+  });
+  eq(imported.first.tasks, 2, 'nothing imported');
+  eq(imported.first.days, 1, 'day count');
+  eq(imported.again.tasks, 0, 'duplicate import should be skipped');
+  eq(imported.count, 2, 'day should hold exactly the two tasks');
+});
+await step('the health check finds and repairs broken records', async () => {
+  const res = await page.evaluate(() => {
+    const d = Store.day('2026-12-07', true);
+    d.todos = [
+      { text: 'No id at all', done: false },
+      { id: 'dupe', text: 'First', done: false },
+      { id: 'dupe', text: 'Second', done: false },
+      { id: 'orphan', text: 'Orphan repeat', done: false, recurringId: 'nope' }
+    ];
+    Store.saveNow();
+
+    const before = Store.healthCheck();
+    const fixed = Store.repair();
+    const after = Store.healthCheck();
+    return {
+      codes: before.issues.map((i) => i.code).sort().join(','),
+      beforeClean: before.clean,
+      fixed,
+      afterClean: after.clean,
+      afterIssues: after.issues.length
+    };
+  });
+  ok(res.codes.indexOf('ids') >= 0, 'missing-id not reported: ' + res.codes);
+  ok(res.codes.indexOf('dupes') >= 0, 'duplicate ids not reported');
+  ok(res.codes.indexOf('orphans') >= 0, 'dangling repeat not reported');
+  eq(res.beforeClean, false, 'should not be clean before repair');
+  ok(res.fixed.ids >= 1 && res.fixed.dupes >= 1 && res.fixed.orphans >= 1, 'repair did too little');
+  eq(res.afterClean, true, 'still unhealthy after repair: ' + res.afterIssues);
+});
+await step('panic blur follows the setting', async () => {
+  await nav('settings');
+  const box = await page.$('[data-bind="panic-blur"]');
+  ok(box, 'panic-blur checkbox missing');
+  const checked = await page.$eval('[data-bind="panic-blur"]', (el) => el.checked);
+  eq(checked, false, 'should default off');
+
+  await page.click('[data-bind="panic-blur"]');
+  await sleep(300);
+  eq(await page.evaluate(() => Store.user().settings.panicBlur), true, 'setting not stored');
+
+  await page.evaluate(() => window.dispatchEvent(new Event('blur')));
+  await sleep(200);
+  ok(await page.evaluate(() => document.body.classList.contains('panic')), 'blur not applied on window blur');
+
+  await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+  await sleep(200);
+  ok(!(await page.evaluate(() => document.body.classList.contains('panic'))), 'blur not removed on focus');
+  await page.click('[data-bind="panic-blur"]');
+  await sleep(250);
+});
+
+/* ------------------------------------------------------------------ */
 console.log('\n— weekly & daily reviews —');
 await step('the weekly review is due on the configured day', async () => {
   const due = await page.evaluate(() => {

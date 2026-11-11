@@ -41,10 +41,36 @@
     return out ? '<span class="row-meta">' + out + '</span>' : '';
   }
 
+  function expandedNow(id) {
+    return !!(global.Parts && global.Parts.expandedId === id);
+  }
+
+  function subRows(t, scope, key) {
+    var subs = t.sub || [];
+    var done = subs.filter(function (x) { return x.done; }).length;
+    var attrs = ' data-scope="' + esc(scope) + '" data-key="' + esc(key) + '" data-id="' + esc(t.id) + '"';
+    var out = '<div class="sub-list">';
+    subs.forEach(function (x) {
+      out += '<div class="sub-row' + (x.done ? ' done' : '') + '">' +
+        '<button class="check small" data-act="sub-toggle"' + attrs + ' data-sub="' + esc(x.id) +
+        '" aria-label="Toggle subtask">' + icon('check') + '</button>' +
+        '<span class="sub-text">' + esc(x.text) + '</span>' +
+        '<button class="icon-btn danger flat" data-act="sub-del"' + attrs + ' data-sub="' + esc(x.id) +
+        '" aria-label="Delete subtask">' + icon('x') + '</button></div>';
+    });
+    out += '<form class="sub-add" data-form="add-sub"' + attrs + '>' +
+      '<input type="text" name="text" placeholder="Add a step…" autocomplete="off" aria-label="Add a step">' +
+      '</form>';
+    out += '</div>';
+    return { html: out, done: done, total: subs.length };
+  }
+
   function todoRow(t, scope, key) {
     var attrs = ' data-scope="' + esc(scope) + '" data-key="' + esc(key) + '" data-id="' + esc(t.id) + '"';
     var sel = selecting(key);
     var picked = isSelected(t.id);
+    var subs = t.sub || [];
+    var subsDone = subs.filter(function (x) { return x.done; }).length;
     var handle = sel
       ? '<button class="select-box' + (picked ? ' on' : '') + '" data-act="select-toggle"' + attrs +
         ' aria-label="' + (picked ? 'Deselect' : 'Select') + '" aria-pressed="' + picked + '">' + icon('check') + '</button>'
@@ -56,12 +82,17 @@
       handle +
       '<button class="check" data-act="todo-toggle"' + attrs + ' aria-label="' +
       (t.done ? 'Mark not done' : 'Mark done') + '">' + icon('check') + '</button>' +
-      '<div class="row-main">' + textCell(t, scope, key) + metaPills(t) + '</div>' +
+      '<div class="row-main">' +
+      '<button class="sub-toggle" data-act="row-expand"' + attrs + ' aria-expanded="' + expandedNow(t.id) + '" ' +
+      'aria-label="' + (subs.length ? 'Show steps' : 'Add a step') + '">' + (expandedNow(t.id) ? '▾' : '▸') + '</button>' +
+      (subs.length ? '<span class="pill pill-sub num">' + subsDone + '/' + subs.length + '</span>' : '') +
+      textCell(t, scope, key) + metaPills(t) + '</div>' +
       '<div class="row-actions">' +
       '<button class="icon-btn" data-act="todo-details"' + attrs + ' title="Estimate &amp; repeat" aria-label="Details">' + icon('more') + '</button>' +
       '<button class="icon-btn" data-act="todo-prio"' + attrs + ' title="Priority" aria-label="Priority">' + icon('star') + '</button>' +
       '<button class="icon-btn danger" data-act="todo-del"' + attrs + ' title="Delete" aria-label="Delete">' + icon('trash') + '</button>' +
-      '</div></div>';
+      '</div></div>' +
+      (expandedNow(t.id) ? subRows(t, scope, key).html : '');
   }
 
   function goalRow(g, scope, key) {
@@ -140,7 +171,8 @@
   }
 
   global.Parts = {
-    editingId: null, selectionKey: null, selectedIds: [], loadBar: loadBar, reviewBody: reviewBody,
+    editingId: null, selectionKey: null, selectedIds: [], expandedId: null,
+    loadBar: loadBar, reviewBody: reviewBody,
     todoRow: todoRow, goalRow: goalRow, blockRow: blockRow,
     composer: composer, rows: rows
   };

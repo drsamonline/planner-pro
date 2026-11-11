@@ -14,9 +14,9 @@ Day, week, month and year planning in one quiet screen. Multi-profile, PIN-locke
 </p>
 
 <p align="center">
-  <img alt="Version" src="https://img.shields.io/badge/version-14.8.0-8B5CF6">
+  <img alt="Version" src="https://img.shields.io/badge/version-14.9.0-8B5CF6">
   <img alt="License" src="https://img.shields.io/badge/license-PolyForm%20Noncommercial%201.0.0-22D3EE">
-  <img alt="Tests" src="https://img.shields.io/badge/e2e%20checks-104%20passing-34D399">
+  <img alt="Tests" src="https://img.shields.io/badge/e2e%20checks-108%20passing-34D399">
   <img alt="Offline" src="https://img.shields.io/badge/works%20offline-100%25-34D399">
   <img alt="No tracking" src="https://img.shields.io/badge/tracking-none-lightgrey">
   <img alt="Dependencies" src="https://img.shields.io/badge/runtime%20deps-zero-brightgreen">
@@ -84,6 +84,10 @@ and stores everything on your device.
 - **Bulk actions** — select several tasks to move them to another day or delete them (with undo).
 - **Markdown vault export** — one `.md` note per day and per week, zipped in the browser with a hand-rolled store-only writer (no dependency, verified against `unzip`).
 - **Focus timer** — start 25 minutes from the Schedule card; the countdown lives in the top bar with pause and stop.
+- **Subtasks** — one level of steps under any task, with a done count and an inline add box.
+- **CSV import** — `date,text,done,tags` pasted or chosen as a file; duplicates are skipped.
+- **Data health** — a check for missing ids, duplicates, dangling repeats and trash; repair fixes what can be fixed and never deletes a day or a note.
+- **Panic blur** — blur the planner when the window loses focus.
 - **Swipe between days** — horizontal swipe on the day view on touch screens.
 - **Reviews** — a weekly review with an auto-generated summary (what got done, what didn't, what changes, next week's focus) and an end-of-day review that can seed tomorrow's first task.
 - **Tag filtering** — click a `#tag` anywhere, or type `#health` in search.
@@ -193,7 +197,7 @@ date, so a plan belongs to *one* week instead of repeating every week.
 
 ```bash
 npm install          # dev tooling only: puppeteer-core + electron-builder
-npm test             # 104 end-to-end checks in headless Chromium
+npm test             # 108 end-to-end checks in headless Chromium
 npm run build:single # one portable planner-pro.html
 npm run build:web    # zip of the offline web build in dist/
 ```
@@ -224,7 +228,9 @@ and a "review" mode for weekly/monthly reflection.
 
 ## Privacy
 
-No analytics, no telemetry, no network requests after the shell is cached. The
+No analytics, no telemetry, and **no networking code at all** — grep the source for
+`fetch`, `XMLHttpRequest` or `WebSocket`: there is none. The only way data leaves the
+device is a file you export. Nothing is sent after the shell is cached. The
 only outbound links are the ones in this README and the About screen. If you
 clear site data, the planner starts empty — export a backup first.
 

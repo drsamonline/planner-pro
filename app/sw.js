@@ -3,7 +3,7 @@
    Strategy: cache-first for the shell, network-first (with cache fallback) for
    navigations, stale-while-revalidate for everything else same-origin. */
 
-const VERSION = 'v14.8.0';
+const VERSION = 'v14.9.0';
 const CACHE = 'planner-pro-' + VERSION;
 
 const SHELL = [

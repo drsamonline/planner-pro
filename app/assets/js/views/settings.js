@@ -60,6 +60,9 @@
         '<label style="display:flex;gap:9px;align-items:center;margin:0;cursor:pointer">' +
         '<input type="checkbox" data-bind="auto-archive"' + (u.settings.autoArchive ? ' checked' : '') + '>' +
         '<span class="small">Auto-archive finished years</span></label>' +
+        '<label style="display:flex;gap:9px;align-items:center;margin:0;cursor:pointer">' +
+        '<input type="checkbox" data-bind="panic-blur"' + (u.settings.panicBlur ? ' checked' : '') + '>' +
+        '<span class="small">Blur the planner when the window loses focus</span></label>' +
         '</div>' +
 
         '<div class="card"><div class="card-head"><h2>' + icon('lock') + 'PIN</h2></div>' +
@@ -79,6 +82,7 @@
         '<p class="tiny dim">Everything lives in this browser. Clearing site data deletes it — export a backup regularly, or keep the JSON in your cloud drive.</p>' +
         '<button class="btn" data-act="export-db">' + icon('download') + 'Export database (.json)</button>' +
         '<button class="btn btn-ghost" data-act="import-db">' + icon('upload') + 'Import database (.json)</button>' +
+        '<button class="btn btn-ghost" data-act="import-csv">' + icon('upload') + 'Import tasks from CSV</button>' +
         '<input type="file" id="importFile" accept="application/json,.json" data-file="import" hidden>' +
         '<input type="file" id="importEncFile" accept=".planner,application/json" data-file="import-encrypted" hidden>' +
         '<button class="btn btn-ghost" data-act="export-md">' + icon('note') + 'Export all as Markdown</button>' +
@@ -99,6 +103,12 @@
         '<button class="btn btn-quiet btn-sm" data-act="go" data-href="#/about">' + icon('info') + 'About &amp; shortcuts</button>' +
         '</div></div>' +
         '</div>';
+
+      /* data health */
+      h += '<div class="card"><div class="card-head"><h2>' + icon('info') + 'Data health</h2>' +
+        '<button class="btn btn-ghost btn-sm" data-act="data-health">Run a check</button></div>' +
+        '<p class="tiny dim">Checks ids, duplicates, dangling repeats and the trash. A repair fills in what is ' +
+        'missing and never deletes a day, a note or a task.</p></div>';
 
       /* repeating tasks */
       var rules = Store.recurring();

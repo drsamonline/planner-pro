@@ -4,6 +4,27 @@ All notable changes to Planner Pro. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [semantic versioning](https://semver.org/).
 
+## [14.9.0] — 2026-11-11
+
+The last of the local features. Steps inside tasks, a way in for other people's
+CSV, a check that the document is intact, and a blur for when someone walks up
+behind you.
+
+### Added
+
+- **Subtasks.** One level of steps under any task: a chevron on every row opens an inline list with a done count and an add box. Subtasks travel with the task through bulk move, templates, copy-day and both Markdown exports.
+- **CSV import.** `date,text,done,tags`, pasted or picked as a file. The parser handles quoted commas and embedded newlines (RFC 4180-ish), a header row is optional, dates must be `YYYY-MM-DD`, and a task already on that day with the same text is skipped — so importing twice is harmless.
+- **Data health.** A check for missing ids, duplicate ids, tasks with no text, dangling `recurringId` links, malformed day keys and stale trash. Repair fills in missing ids, re-ids duplicates, unlinks dead repeats and prunes expired trash. It never deletes a day, a note or a task.
+- **Panic blur.** Settings → "Blur the planner when the window loses focus". Focus is tracked from the window events rather than `document.hasFocus()`, which lies when another app steals focus.
+
+### Removed from the plan
+
+- Internationalisation (C3) and every networked feature — user-owned sync (C4) and a sync server (C7) — are out. The app has no networking code: `grep` for `fetch`, `XMLHttpRequest` or `WebSocket` returns nothing, and the README and landing page now say so.
+
+### Verified
+
+- The end-to-end suite grew from 104 to **108 checks**: adding, ticking and counting subtasks; the CSV parser keeping a quoted comma and the importer being idempotent; a deliberately broken document being reported (missing ids, duplicates, dangling repeat) and repaired to clean; and panic blur following the setting through blur and focus.
+
 ## [14.8.0] — 2026-11-11
 
 Getting the work out of the app. The planner can now hand you a folder of plain

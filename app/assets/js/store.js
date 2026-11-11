@@ -36,7 +36,7 @@
       trash: [], lastExportAt: 0, backupSnoozeUntil: 0,
       recurring: [], templates: [], capacityMin: 480,
       reviewDay: 0, reviewSnoozeUntil: 0,
-      settings: { carryOver: true, autoArchive: true, requirePin: true }
+      settings: { carryOver: true, autoArchive: true, requirePin: true, panicBlur: false }
     };
   }
 
@@ -100,6 +100,7 @@
       if (u.settings.carryOver === undefined) u.settings.carryOver = true;
       if (u.settings.autoArchive === undefined) u.settings.autoArchive = true;
       if (u.settings.requirePin === undefined) u.settings.requirePin = true;
+      if (u.settings.panicBlur === undefined) u.settings.panicBlur = false;
       ['days', 'weeks', 'months', 'years', 'archives'].forEach(function (k) {
         if (!u[k] || typeof u[k] !== 'object') u[k] = {};
       });
@@ -766,6 +767,106 @@
     return days.map(function (d) { return names[d]; }).join(', ');
   }
 
+  /* ---------------- data health ----------------
+     Conservative on purpose: a check may report anything, but a repair only
+     fills in missing ids, unlinks dangling recurring references and prunes the
+     trash. It never deletes a day, a note or a task. */
+
+  function healthCheck() {
+    var u = user();
+    if (!u) return null;
+
+    var missingIds = 0, duplicates = 0, emptyText = 0, orphanRules = 0;
+    var badKeys = 0, subMissingIds = 0, seen = {};
+    var todoCount = 0;
+
+    Object.keys(u.days).forEach(function (k) {
+      if (!global.DateUtil.isKey(k)) badKeys++;
+      (u.days[k].todos || []).forEach(function (t) {
+        todoCount++;
+        if (!t.id) missingIds++;
+        else if (seen[t.id]) duplicates++;
+        else seen[t.id] = 1;
+        if (!String(t.text || '').trim()) emptyText++;
+        if (t.recurringId && !(u.recurring || []).some(function (r) { return r.id === t.recurringId; })) orphanRules++;
+        (t.sub || []).forEach(function (x) { if (!x.id) subMissingIds++; });
+      });
+      (u.days[k].blocks || []).forEach(function (b) { if (!b.id) missingIds++; });
+    });
+
+    var issues = [];
+    if (missingIds) issues.push({ code: 'ids', count: missingIds, label: 'Records without an id' });
+    if (subMissingIds) issues.push({ code: 'subids', count: subMissingIds, label: 'Subtasks without an id' });
+    if (duplicates) issues.push({ code: 'dupes', count: duplicates, label: 'Duplicate ids' });
+    if (emptyText) issues.push({ code: 'empty', count: emptyText, label: 'Tasks with no text' });
+    if (orphanRules) issues.push({ code: 'orphans', count: orphanRules, label: 'Repeats that no longer exist' });
+    if (badKeys) issues.push({ code: 'keys', count: badKeys, label: 'Days with a malformed date key' });
+
+    return {
+      size: usage().bytes,
+      days: Object.keys(u.days).length,
+      todos: todoCount,
+      trash: (u.trash || []).length,
+      issues: issues,
+      clean: issues.length === 0
+    };
+  }
+
+  /** Fix what can be fixed without guessing. Returns what was changed. */
+  function repair() {
+    var u = user();
+    if (!u) return null;
+    var fixed = { ids: 0, dupes: 0, orphans: 0, trash: 0 };
+    var seen = {};
+
+    Object.keys(u.days).forEach(function (k) {
+      (u.days[k].todos || []).forEach(function (t) {
+        if (!t.id) { t.id = uid(); fixed.ids++; }
+        else if (seen[t.id]) { t.id = uid(); fixed.dupes++; }
+        seen[t.id] = 1;
+        (t.sub || []).forEach(function (x) { if (!x.id) { x.id = uid(); fixed.ids++; } });
+        if (t.recurringId && !(u.recurring || []).some(function (r) { return r.id === t.recurringId; })) {
+          delete t.recurringId;
+          fixed.orphans++;
+        }
+      });
+      (u.days[k].blocks || []).forEach(function (b) { if (!b.id) { b.id = uid(); fixed.ids++; } });
+    });
+
+    var before = (u.trash || []).length;
+    trash();
+    fixed.trash = before - (u.trash || []).length;
+
+    saveNow();
+    return fixed;
+  }
+
+  /* ---------------- CSV import ---------------- */
+
+  /** Merge parsed rows into days. rows: [{date, text, done, tags}] */
+  function importRows(rows) {
+    var u = user();
+    if (!u) return { tasks: 0, days: 0 };
+    var touched = {};
+    var added = 0;
+
+    (rows || []).forEach(function (row) {
+      if (!row || !row.text || !global.DateUtil.isKey(row.date)) return;
+      var d = day(row.date, true);
+      var exists = d.todos.some(function (t) { return t.text.toLowerCase() === row.text.toLowerCase(); });
+      if (exists) return;
+      d.todos.push({
+        id: uid(), text: row.text, done: !!row.done,
+        tags: row.tags || [], est: row.est || 0, at: row.at || ''
+      });
+      touched[row.date] = 1;
+      added++;
+    });
+
+    if (added) saveNow();
+    return { tasks: added, days: Object.keys(touched).length };
+  }
+
   /* ---------------- reviews ----------------
      A weekly review lives on the week object, a daily one on the day. Both are
      plain data, so they export and archive with everything else. */
@@ -1043,6 +1144,7 @@
     recurring: recurring, addRecurring: addRecurring, removeRecurring: removeRecurring,
     toggleRecurring: toggleRecurring, ensureRecurring: ensureRecurring, repeatLabel: repeatLabel,
     templates: templates, addTemplate: addTemplate, removeTemplate: removeTemplate,
+    healthCheck: healthCheck, repair: repair, importRows: importRows,
     reviewDay: reviewDay, setReviewDay: setReviewDay, reviewDue: reviewDue,
     snoozeReview: snoozeReview, weekSummary: weekSummary,
     capacity: capacity, setCapacity: setCapacity, dayLoad: dayLoad,

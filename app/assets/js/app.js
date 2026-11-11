@@ -640,6 +640,197 @@
     });
   }
 
+  /* ---------------- subtasks ---------------- */
+
+  function actRowExpand(el) {
+    var id = el.dataset.id;
+    global.Parts.expandedId = (global.Parts.expandedId === id) ? null : id;
+    refresh();
+  }
+
+  function findSub(scope, key, id, subId) {
+    var f = findItem(scope, key, id);
+    if (!f) return null;
+    var sub = (f.item.sub || []).filter(function (x) { return x.id === subId; })[0];
+    return sub ? { item: f.item, sub: sub } : null;
+  }
+
+  function actSubToggle(el) {
+    var found = findSub(el.dataset.scope, el.dataset.key, el.dataset.id, el.dataset.sub);
+    if (!found) return;
+    found.sub.done = !found.sub.done;
+    Store.saveNow();
+    refresh();
+  }
+
+  function actSubDel(el) {
+    var f = findItem(el.dataset.scope, el.dataset.key, el.dataset.id);
+    if (!f || !f.item.sub) return;
+    f.item.sub = f.item.sub.filter(function (x) { return x.id !== el.dataset.sub; });
+    Store.saveNow();
+    refresh();
+  }
+
+  function addSub(form) {
+    var f = findItem(form.dataset.scope, form.dataset.key, form.dataset.id);
+    if (!f) return;
+    var input = form.querySelector('input[name="text"]');
+    var text = (input.value || '').trim();
+    if (!text) return;
+    if (!Array.isArray(f.item.sub)) f.item.sub = [];
+    f.item.sub.push({ id: Store.uid(), text: text, done: false });
+    global.Parts.expandedId = f.item.id;
+    Store.saveNow();
+    input.value = '';
+    refresh();
+    var again = document.querySelector('form[data-form="add-sub"][data-id="' + f.item.id + '"] input');
+    if (again) again.focus();
+  }
+
+  /* ---------------- data health ---------------- */
+
+  function actHealth() {
+    var report = Store.healthCheck();
+    if (!report) return;
+    var body = '<div class="review-stats tiny">' +
+      '<span><strong>' + report.days + '</strong> days</span>' +
+      '<span><strong>' + report.todos + '</strong> tasks</span>' +
+      '<span><strong>' + report.trash + '</strong> in trash</span>' +
+      '<span><strong>' + UI.fmtBytes(report.size) + '</strong> stored</span>' +
+      '</div>' +
+      (report.clean
+        ? '<p class="small" style="margin-top:12px">No problems found. Ids are intact, no duplicates, no dangling repeats.</p>'
+        : '<ul class="health-list">' + report.issues.map(function (i) {
+          return '<li><strong>' + i.count + '</strong> · ' + esc(i.label) + '</li>';
+        }).join('') + '</ul>');
+
+    UI.openModal({
+      title: 'Data health',
+      body: body,
+      actions: [
+        { label: 'Close', value: null, cls: 'btn-ghost' },
+        {
+          label: report.clean ? 'Nothing to fix' : 'Repair', value: 'fix',
+          cls: report.clean ? 'btn-ghost' : 'btn',
+          onClick: function () {
+            if (report.clean) return;
+            var fixed = Store.repair();
+            refresh();
+            UI.toast('Fixed ' + (fixed.ids + fixed.dupes + fixed.orphans + fixed.trash) + ' record(s)');
+          }
+        }
+      ]
+    });
+  }
+
+  /* ---------------- CSV import ---------------- */
+
+  /** Minimal RFC-4180 parser: quotes, escaped quotes, embedded newlines. */
+  function parseCsv(text) {
+    var rows = [];
+    var row = [];
+    var field = '';
+    var quoted = false;
+    var src = String(text || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+
+    for (var i = 0; i < src.length; i++) {
+      var c = src[i];
+      if (quoted) {
+        if (c === '"') {
+          if (src[i + 1] === '"') { field += '"'; i++; }
+          else quoted = false;
+        } else field += c;
+      } else if (c === '"') {
+        quoted = true;
+      } else if (c === ',') {
+        row.push(field); field = '';
+      } else if (c === '\n') {
+        row.push(field); field = '';
+        rows.push(row); row = [];
+      } else field += c;
+    }
+    if (field.length || row.length) { row.push(field); rows.push(row); }
+    return rows.filter(function (r) { return r.some(function (x) { return String(x).trim() !== ''; }); });
+  }
+
+  function actImportCsv() {
+    UI.openModal({
+      title: 'Import tasks from CSV',
+      body: '<p class="small">Columns: <code>date, text, done, tags</code> — a header row is optional. ' +
+        'Dates must be <code>YYYY-MM-DD</code>. Tasks already on that day with the same text are skipped.</p>' +
+        '<div class="field" style="margin-top:12px"><label for="csvText">Paste CSV</label>' +
+        '<textarea id="csvText" style="min-height:120px" placeholder="2026-11-12,Call the clinic,false,health&#10;2026-11-12,Write notes,true,"></textarea></div>' +
+        '<input type="file" id="csvFile" accept=".csv,text/csv" style="margin-top:10px">',
+      actions: [
+        { label: 'Cancel', value: null, cls: 'btn-ghost' },
+        {
+          label: 'Import', value: 'go', cls: 'btn', onClick: function () {
+            var text = ($('csvText').value || '').trim();
+            if (!text) { UI.toast('Paste some CSV first'); return false; }
+            runCsvImport(text);
+          }
+        }
+      ],
+      onMount: function (body) {
+        var file = body.querySelector('#csvFile');
+        if (!file) return;
+        file.addEventListener('change', function () {
+          var f = file.files && file.files[0];
+          if (!f) return;
+          var reader = new FileReader();
+          reader.onload = function (ev) { $('csvText').value = ev.target.result; };
+          reader.readAsText(f);
+        });
+      }
+    });
+  }
+
+  function runCsvImport(text) {
+    var rows = parseCsv(text);
+    if (!rows.length) { UI.toast('That file has no rows'); return; }
+
+    var header = rows[0].map(function (c) { return String(c).trim().toLowerCase(); });
+    var hasHeader = header.indexOf('date') >= 0 && header.indexOf('text') >= 0;
+    var idx = hasHeader
+      ? { date: header.indexOf('date'), text: header.indexOf('text'), done: header.indexOf('done'), tags: header.indexOf('tags') }
+      : { date: 0, text: 1, done: 2, tags: 3 };
+
+    var parsed = [];
+    rows.slice(hasHeader ? 1 : 0).forEach(function (r) {
+      var date = String(r[idx.date] || '').trim();
+      var text = String(r[idx.text] || '').trim();
+      if (!D.isKey(date) || !text) return;
+      var doneRaw = idx.done >= 0 ? String(r[idx.done] || '').trim().toLowerCase() : '';
+      var tagsRaw = idx.tags >= 0 ? String(r[idx.tags] || '') : '';
+      parsed.push({
+        date: date,
+        text: text,
+        done: ['1', 'true', 'yes', 'x', 'done'].indexOf(doneRaw) >= 0,
+        tags: tagsRaw.split(/[\s,;]+/).map(function (t) { return t.replace(/^#/, '').trim(); })
+          .filter(function (t) { return t; })
+      });
+    });
+
+    if (!parsed.length) { UI.toast('No usable rows — check the date column'); return; }
+    var res = Store.importRows(parsed);
+    UI.closeModal(null);
+    refresh();
+    UI.toast('Imported ' + res.tasks + ' task' + (res.tasks === 1 ? '' : 's') + ' across ' + res.days + ' day' + (res.days === 1 ? '' : 's'));
+  }
+
+  /* ---------------- panic blur ---------------- */
+
+  /* Track focus from the events themselves: document.hasFocus() is unreliable
+     when the window is blurred by another app rather than by navigation. */
+  var windowFocused = true;
+
+  function applyPanic(focused) {
+    if (typeof focused === 'boolean') windowFocused = focused;
+    var u = Store.user();
+    var on = !!(u && u.settings && u.settings.panicBlur);
+    document.body.classList.toggle('panic', on && !windowFocused);
+  }
+
   /* ---------------- focus timer ----------------
      In memory on purpose: a timer that survives a reload is a lie about what a
      timer is. Closing the app ends the session. */
@@ -765,6 +956,9 @@
           (t.tags || []).forEach(function (tag) { meta.push('#' + tag); });
           if (t.recurringId) meta.push('↻');
           lines.push('- [' + (t.done ? 'x' : ' ') + '] ' + t.text + (meta.length ? '  _(' + meta.join(' · ') + ')_' : ''));
+          (t.sub || []).forEach(function (x) {
+            lines.push('  - [' + (x.done ? 'x' : ' ') + '] ' + x.text);
+          });
         });
         lines.push('');
       }
@@ -1389,7 +1583,10 @@
       if (!d.todos.length && !d.notes && !d.intention && !d.blocks.length) return;
       out.push('### ' + D.longDay(k));
       if (d.intention) out.push('', '_' + d.intention + '_');
-      d.todos.forEach(function (t) { out.push('- [' + (t.done ? 'x' : ' ') + '] ' + t.text); });
+      d.todos.forEach(function (t) {
+        out.push('- [' + (t.done ? 'x' : ' ') + '] ' + t.text);
+        (t.sub || []).forEach(function (x) { out.push('  - [' + (x.done ? 'x' : ' ') + '] ' + x.text); });
+      });
       d.blocks.forEach(function (b) { out.push('- ' + (b.start || '--:--') + ' — ' + (b.text || '')); });
       if (d.notes) out.push('', d.notes);
       if (d.review && d.review.at) {
@@ -2017,6 +2214,11 @@
         case 'trash-delete': actTrashDelete(ds.id); break;
         case 'trash-empty': actTrashEmpty(); break;
         case 'duplicate-day': actDuplicateDay(ds.key); break;
+        case 'row-expand': actRowExpand(el); break;
+        case 'sub-toggle': actSubToggle(el); break;
+        case 'sub-del': actSubDel(el); break;
+        case 'data-health': actHealth(); break;
+        case 'import-csv': actImportCsv(); break;
         case 'focus-start': startFocus(ds.minutes || 25, currentBlockLabel(ds.key)); break;
         case 'focus-pause': pauseFocus(); break;
         case 'focus-stop': stopFocus(); break;
@@ -2059,6 +2261,7 @@
       var form = e.target.closest('form[data-form]');
       if (!form) return;
       e.preventDefault();
+      if (form.dataset.form === 'add-sub') { addSub(form); return; }
       if (form.dataset.form === 'add-todo') {
         var input = form.querySelector('input[name="text"]');
         var text = (input.value || '').trim();
@@ -2127,6 +2330,12 @@
       if (b === 'capacity') { Store.setCapacity(t.value); refresh(); return; }
       if (b === 'review-day') { Store.setReviewDay(Number(t.value)); refresh(); return; }
       if (b === 'require-pin') { Store.user().settings.requirePin = t.checked; Store.saveNow(); return; }
+      if (b === 'panic-blur') {
+        Store.user().settings.panicBlur = t.checked;
+        Store.saveNow();
+        applyPanic(windowFocused);
+        return;
+      }
       if (b === 'block-start' || b === 'block-text') {
         var day = Store.day(t.dataset.key, true);
         var blk = day.blocks.filter(function (x) { return x.id === t.dataset.id; })[0];
@@ -2216,6 +2425,8 @@
     /* ---- lifecycle ---- */
     window.addEventListener('hashchange', route);
     window.addEventListener('beforeunload', function () { Store.saveNow(); });
+    window.addEventListener('blur', function () { applyPanic(false); });
+    window.addEventListener('focus', function () { applyPanic(true); });
     document.addEventListener('visibilitychange', function () {
       if (document.hidden) Store.saveNow();
       else if (Store.user()) refresh();
@@ -2264,7 +2475,7 @@
   global.PlannerDebug = {
     icsFor: icsFor, parseDateQuery: parseDateQuery, icsEsc: icsEsc,
     parseQuickAdd: parseQuickAdd, moveRow: moveRow,
-    vaultFiles: vaultFiles, startFocus: startFocus, stopFocus: stopFocus,
+    vaultFiles: vaultFiles, startFocus: startFocus, stopFocus: stopFocus, parseCsv: parseCsv,
     focusState: function () { return focus; }
   };
 
