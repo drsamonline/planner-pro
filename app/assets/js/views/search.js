@@ -8,14 +8,21 @@
 
   function collect(q) {
     var u = Store.user();
-    var needle = q.toLowerCase();
+    var raw = String(q || '').trim();
+    var tagOnly = raw.charAt(0) === '#';
+    var needle = (tagOnly ? raw.slice(1) : raw).toLowerCase();
     var out = [];
     var seen = 0;
 
-    function hit(kind, title, sub, href, body) {
+    function hit(kind, title, sub, href, body, tags) {
       if (seen >= MAX) return;
-      var hay = (title + ' ' + (sub || '') + ' ' + (body || '')).toLowerCase();
-      if (hay.indexOf(needle) < 0) return;
+      var list = (tags || []).map(function (t) { return String(t).toLowerCase(); });
+      if (tagOnly) {
+        if (list.indexOf(needle) < 0) return;
+      } else {
+        var hay = (title + ' ' + (sub || '') + ' ' + (body || '') + ' ' + list.join(' ')).toLowerCase();
+        if (hay.indexOf(needle) < 0) return;
+      }
       seen++;
       out.push({ kind: kind, title: title, sub: sub, href: href, body: body });
     }
@@ -23,7 +30,7 @@
     Object.keys(u.days).forEach(function (k) {
       var d = u.days[k];
       d.todos.forEach(function (t) {
-        hit('Task', t.text, D.prettyDay(k) + (t.done ? ' · done' : ''), '#/day/' + k, '');
+        hit('Task', t.text, D.prettyDay(k) + (t.done ? ' · done' : ''), '#/day/' + k, '', t.tags);
       });
       if (d.intention) hit('Intention', d.intention, D.prettyDay(k), '#/day/' + k, '');
       if (d.notes) hit('Note', d.notes.slice(0, 90), D.prettyDay(k), '#/day/' + k, d.notes);
@@ -56,7 +63,7 @@
       });
     });
 
-    if (u.quickNotes) hit('Brain dump', u.quickNotes.slice(0, 90), 'Dashboard notes', '#/today', u.quickNotes);
+    if (u.quickNotes) hit('Brain dump', u.quickNotes.slice(0, 90), 'Dashboard notes', '#/today', u.quickNotes, []);
 
     return out;
   }
@@ -90,13 +97,15 @@
 
   global.Views.search = {
     title: 'Search',
-    subtitle: function () { return 'Find anything you wrote, in one place'; },
+    subtitle: function (p) { return p ? 'Tagged #' + p : 'Find anything you wrote, in one place'; },
 
-    render: function () {
+    render: function (p) {
+      var initial = p ? '#' + p : '';
       return '<div class="card"><div class="composer">' +
-        '<input type="search" id="searchInput" data-live="search" placeholder="Search tasks, notes, goals…" autocomplete="off" autofocus>' +
+        '<input type="search" id="searchInput" data-live="search" placeholder="Search tasks, notes, goals… or type #tag" ' +
+        'value="' + esc(initial) + '" autocomplete="off" autofocus>' +
         '</div></div>' +
-        '<div id="searchResults">' + resultsHTML('') + '</div>';
+        '<div id="searchResults">' + resultsHTML(initial) + '</div>';
     },
 
     results: resultsHTML,

@@ -24,7 +24,8 @@
     if (t.at) out += '<span class="pill pill-time">' + esc(t.at) + '</span>';
     if (t.est) out += '<span class="pill pill-est">' + esc(UI.duration(t.est)) + '</span>';
     (t.tags || []).forEach(function (tag) {
-      out += '<span class="pill pill-tag">#' + esc(tag) + '</span>';
+      out += '<button class="pill pill-tag" data-act="filter-tag" data-tag="' + esc(tag) +
+        '" title="Show everything tagged #' + esc(tag) + '">#' + esc(tag) + '</button>';
     });
     return out ? '<span class="row-meta">' + out + '</span>' : '';
   }

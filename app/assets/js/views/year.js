@@ -27,6 +27,7 @@
         (y === thisYear ? '<span class="pill pill-ok">This year</span>' :
           '<button class="btn btn-ghost btn-sm" data-act="go" data-href="#/year/' + thisYear + '">This year</button>') +
         '<span class="spacer"></span>' +
+        '<button class="btn btn-ghost btn-sm" data-act="go" data-href="#/insights/' + y + '">' + icon('chart') + '<span class="btn-label">Insights</span></button>' +
         (y !== thisYear ? '<button class="btn btn-ghost btn-sm" data-act="archive-year" data-year="' + y + '">' + icon('archive') + 'Archive ' + y + '</button>' : '') +
         '</div>';
 

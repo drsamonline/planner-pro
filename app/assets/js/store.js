@@ -685,6 +685,97 @@
     return { minutes: total, tasks: estimated, capacity: capacity(), over: total > capacity() };
   }
 
+  /* ---------------- insight aggregates ---------------- */
+
+  /** Every day of a calendar year, with its completion counts. */
+  function heatmap(year) {
+    var out = [];
+    var first = global.DateUtil.toKey(new Date(year, 0, 1));
+    var last = global.DateUtil.toKey(new Date(year, 11, 31));
+    var k = first;
+    while (k <= last) {
+      var st = dayStats(k);
+      out.push({ key: k, done: st.done, total: st.total });
+      k = global.DateUtil.addDays(k, 1);
+    }
+    return out;
+  }
+
+  /** Longest run of consecutive days with at least one completed task. */
+  function bestStreak() {
+    var u = user();
+    if (!u) return 0;
+    var keys = Object.keys(u.days).sort();
+    var best = 0, run = 0, prev = null;
+    keys.forEach(function (k) {
+      if (dayStats(k).done > 0) {
+        run = (prev && global.DateUtil.diffDays(k, prev) === 1) ? run + 1 : 1;
+        if (run > best) best = run;
+        prev = k;
+      } else {
+        run = 0;
+        prev = null;
+      }
+    });
+    return best;
+  }
+
+  /** tag → count, most used first. */
+  function tagIndex() {
+    var u = user();
+    if (!u) return [];
+    var counts = {};
+    Object.keys(u.days).forEach(function (k) {
+      (u.days[k].todos || []).forEach(function (t) {
+        (t.tags || []).forEach(function (tag) { counts[tag] = (counts[tag] || 0) + 1; });
+      });
+    });
+    return Object.keys(counts).map(function (tag) {
+      return { tag: tag, count: counts[tag] };
+    }).sort(function (a, b) { return b.count - a.count || a.tag.localeCompare(b.tag); });
+  }
+
+  /** Completion per day for the last N days, oldest first. */
+  function trend(days) {
+    var out = [];
+    var today = global.DateUtil.todayKey();
+    for (var i = (days || 30) - 1; i >= 0; i--) {
+      var k = global.DateUtil.addDays(today, -i);
+      var st = dayStats(k);
+      out.push({ key: k, done: st.done, total: st.total });
+    }
+    return out;
+  }
+
+  function insights() {
+    var u = user();
+    if (!u) return null;
+    var planned = 0, total = 0, done = 0;
+    var byWeekday = [0, 0, 0, 0, 0, 0, 0];
+    Object.keys(u.days).forEach(function (k) {
+      var st = dayStats(k);
+      if (st.total) planned++;
+      total += st.total;
+      done += st.done;
+      byWeekday[global.DateUtil.weekday(k)] += st.done;
+    });
+    var busiest = 0;
+    byWeekday.forEach(function (n, i) { if (n > byWeekday[busiest]) busiest = i; });
+
+    return {
+      daysPlanned: planned,
+      tasksTotal: total,
+      tasksDone: done,
+      pct: total ? Math.round(done / total * 100) : 0,
+      bestStreak: bestStreak(),
+      currentStreak: streak(),
+      byWeekday: byWeekday,
+      busiestWeekday: busiest,
+      tags: tagIndex(),
+      rules: (u.recurring || []).length
+    };
+  }
+
   /* ---------------- backup nudge ---------------- */
 
   function markExported() {
@@ -732,6 +823,7 @@
     toggleRecurring: toggleRecurring, ensureRecurring: ensureRecurring, repeatLabel: repeatLabel,
     templates: templates, addTemplate: addTemplate, removeTemplate: removeTemplate,
     capacity: capacity, setCapacity: setCapacity, dayLoad: dayLoad,
+    heatmap: heatmap, bestStreak: bestStreak, tagIndex: tagIndex, trend: trend, insights: insights,
     markExported: markExported, backupStatus: backupStatus, snoozeBackup: snoozeBackup,
     uid: uid, blankDay: blankDay
   };

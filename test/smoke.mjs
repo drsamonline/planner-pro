@@ -673,6 +673,99 @@ await step('saves a day as a template and applies it', async () => {
 });
 
 /* ------------------------------------------------------------------ */
+console.log('\n— insights & tags —');
+await step('insight aggregates match a known dataset', async () => {
+  const res = await page.evaluate(() => {
+    const prev = Store.state().activeUser;
+    Store.addUser('Insights Test', '9999');
+    const seed = (k, arr) => {
+      const day = Store.day(k, true);
+      day.todos = arr.map(([text, done]) => ({ id: Store.uid(), text, done }));
+    };
+    seed('2026-02-02', [['a', true], ['b', true]]);
+    seed('2026-02-03', [['c', true]]);
+    seed('2026-02-04', [['d', true], ['e', false]]);
+    seed('2026-02-06', [['f', true]]);            // gap on the 5th breaks the run
+    Store.day('2026-02-04', true).todos[0].tags = ['health'];
+    Store.day('2026-02-03', true).todos[0].tags = ['health', 'work'];
+    Store.saveNow();
+
+    const data = Store.insights();
+    const heat = Store.heatmap(2026);
+    const out = {
+      daysPlanned: data.daysPlanned,
+      total: data.tasksTotal,
+      done: data.tasksDone,
+      pct: data.pct,
+      best: data.bestStreak,
+      tags: data.tags.map((t) => t.tag + ':' + t.count).join(','),
+      heatLen: heat.length,
+      leapLen: Store.heatmap(2028).length,
+      heatDone: heat.reduce((a, c) => a + c.done, 0),
+      trendLen: Store.trend(30).length
+    };
+    Store.auth(prev);
+    Store.removeUser('9999');
+    return out;
+  });
+  eq(res.daysPlanned, 4, 'days planned');
+  eq(res.total, 6, 'tasks');
+  eq(res.done, 5, 'done');
+  eq(res.pct, 83, 'completion');
+  eq(res.best, 3, 'streak must stop at the gap');
+  eq(res.tags, 'health:2,work:1', 'tag index');
+  eq(res.heatLen, 365, 'non-leap year');
+  eq(res.leapLen, 366, 'leap year');
+  eq(res.heatDone, 5, 'heatmap totals');
+  eq(res.trendLen, 30, 'trend window');
+});
+await step('search filters by tag', async () => {
+  await page.evaluate(() => {
+    const d = Store.day('2026-05-05', true);
+    d.todos = [
+      { id: 'tag1', text: 'Take the tablets', done: false, tags: ['health'] },
+      { id: 'tag2', text: 'Write the report', done: false, tags: ['work'] }
+    ];
+    Store.saveNow();
+    location.hash = '#/search';
+  });
+  await sleep(400);
+  await page.$eval('#searchInput', (el) => {
+    el.value = '#health';
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  await sleep(350);
+  const hits = await page.$$eval('.hit .strong', (els) => els.map((e) => e.textContent));
+  ok(hits.some((h) => h.includes('Take the tablets')), 'tagged task missing from results');
+  ok(!hits.some((h) => h.includes('Write the report')), 'untagged task leaked into a tag filter');
+});
+await step('clicking a tag pill opens it as a filter', async () => {
+  await page.evaluate(() => { location.hash = '#/day/2026-05-05'; });
+  await sleep(400);
+  await page.click('.rows .row .pill-tag');
+  await sleep(450);
+  ok((await page.evaluate(() => location.hash)).includes('#/search/'), 'did not navigate to search');
+  const value = await page.$eval('#searchInput', (el) => el.value);
+  eq(value, '#health', 'search not prefilled with the tag');
+});
+await step('insights view renders the heatmap and stats', async () => {
+  await page.evaluate(() => { location.hash = '#/insights/2026'; });
+  await sleep(500);
+  ok((await count('.heat-cell')) > 300, 'heatmap cells missing');
+  eq(await count('.stats .stat'), 4, 'expected 4 stat tiles');
+  const text = await page.$eval('#view', (el) => el.textContent);
+  ok(text.includes('The year, day by day'), 'heatmap heading missing');
+  ok(text.includes('Last 30 days'), 'trend card missing');
+});
+await step('I opens Insights', async () => {
+  await page.evaluate(() => { location.hash = '#/today'; document.activeElement.blur(); });
+  await sleep(300);
+  await page.keyboard.press('KeyI');
+  await sleep(400);
+  ok((await page.evaluate(() => location.hash)).includes('#/insights'), 'shortcut failed');
+});
+
+/* ------------------------------------------------------------------ */
 console.log('\n— week view —');
 await step('renders 7 day columns', async () => {
   await nav('week');

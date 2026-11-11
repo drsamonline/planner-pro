@@ -3,7 +3,7 @@
    Strategy: cache-first for the shell, network-first (with cache fallback) for
    navigations, stale-while-revalidate for everything else same-origin. */
 
-const VERSION = 'v14.3.0';
+const VERSION = 'v14.4.0';
 const CACHE = 'planner-pro-' + VERSION;
 
 const SHELL = [
@@ -20,6 +20,7 @@ const SHELL = [
   './assets/js/views/week.js',
   './assets/js/views/year.js',
   './assets/js/views/archive.js',
+  './assets/js/views/insights.js',
   './assets/js/views/search.js',
   './assets/js/views/settings.js',
   './assets/js/views/about.js',

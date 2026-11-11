@@ -4,6 +4,32 @@ All notable changes to Planner Pro. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [semantic versioning](https://semver.org/).
 
+## [14.4.0] — 2026-11-11
+
+Looking back. The planner could tell you what to do today; now it can show you what
+the year actually looked like. Data schema unchanged.
+
+### Added
+
+- **Insights view** (`I`, or the rail): a year heatmap where every square is a day and the shade is how much of it you finished, four headline numbers (done in the year, days planned, best streak, busiest weekday), a 30-day trend, and your most-used tags. Clicking a square opens that day.
+- **Best streak** — the longest run of consecutive days with at least one completed task, computed across gaps rather than per-day.
+- **Tag index and filtering** — `#tag` is now a first-class query. Click any tag pill on a task, or a tag in Insights, to see everything carrying it; typing `#health` in search filters to that tag alone.
+- **Year view links to Insights** for the year you are looking at.
+
+### Changed
+
+- Search results and the palette now match tags as well as text.
+- The Insights heatmap scrolls to the most recent weeks on narrow screens instead of starting in January.
+
+### Fixed
+
+- The 30-day trend bars all rendered at the same height: the bar used `class="empty"`, which collided with the app's `.empty` empty-state utility (26 px padding top and bottom → every bar was exactly 52 px). Bars are now sized in pixels and the class is `bar-zero`.
+- The Insights footer row was invisible on desktop because it reused `.row-actions`, which is `opacity: 0` until a row is hovered.
+
+### Verified
+
+- The end-to-end suite grew from 81 to **86 checks**: heatmap length for a normal and a leap year, heatmap totals, aggregate maths on a known dataset (days planned, done, completion %, best streak stopping at a gap, tag counts), the 30-day window, tag-only search, clicking a tag pill, the Insights render, and the `I` shortcut.
+
 ## [14.3.0] — 2026-11-11
 
 Routines. The planner stops assuming every day is hand-built from nothing.

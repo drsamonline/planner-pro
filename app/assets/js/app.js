@@ -11,6 +11,7 @@
     { id: 'week', label: 'Week', icon: 'week', href: '#/week' },
     { id: 'year', label: 'Year', icon: 'year', href: '#/year' },
     { id: 'archive', label: 'Archive', icon: 'archive', href: '#/archive' },
+    { id: 'insights', label: 'Insights', icon: 'chart', href: '#/insights' },
     { id: 'search', label: 'Search', icon: 'search', href: '#/search' },
     { id: 'settings', label: 'Settings', icon: 'settings', href: '#/settings' },
     { id: 'about', label: 'About', icon: 'info', href: '#/about' }
@@ -284,7 +285,14 @@
     // the floating add button would sit on top of a view's own composer
     $('app').classList.toggle('has-composer', ['today', 'day', 'week', 'year'].indexOf(id) >= 0);
     if (isRoute) window.scrollTo({ top: 0, behavior: 'instant' in document.documentElement.style ? 'instant' : 'auto' });
-    if (id === 'search') { var si = $('searchInput'); if (si) si.focus(); }
+    if (id === 'insights') {
+      var heat = document.querySelector('.heat-scroll');
+      if (heat && heat.scrollWidth > heat.clientWidth) heat.scrollLeft = heat.scrollWidth;
+    }
+    if (id === 'search') {
+      var si = $('searchInput');
+      if (si) { si.focus(); if (si.value) si.setSelectionRange(si.value.length, si.value.length); }
+    }
   }
 
   function buildNavBadge() {
@@ -1289,6 +1297,7 @@
       { label: 'Go to Week', hint: 'W', icon: 'week', run: function () { actGo('#/week/' + D.weekStartKey(D.todayKey(), Store.user().weekStart)); } },
       { label: 'Go to Year', hint: 'Y', icon: 'year', run: function () { actGo('#/year/' + new Date().getFullYear()); } },
       { label: 'Go to Archive', hint: 'A', icon: 'archive', run: function () { actGo('#/archive'); } },
+      { label: 'Go to Insights', hint: 'I', icon: 'chart', run: function () { actGo('#/insights/' + new Date().getFullYear()); } },
       { label: 'Settings', icon: 'settings', run: function () { actGo('#/settings'); } },
       { label: 'Switch theme', icon: 'theme', run: function () { cycleTheme(); } },
       { label: 'Export backup', icon: 'download', run: actExportDb },
@@ -1484,6 +1493,7 @@
         case 'trash-empty': actTrashEmpty(); break;
         case 'duplicate-day': actDuplicateDay(ds.key); break;
         case 'todo-details': actTodoDetails(el); break;
+        case 'filter-tag': actGo('#/search/' + encodeURIComponent(ds.tag)); break;
         case 'templates': templatesModal(ds.key || D.todayKey()); break;
         case 'template-apply': applyTemplate(ds.id, ds.key); break;
         case 'template-delete':
@@ -1654,6 +1664,7 @@
         if (k === 'w') { actGo('#/week/' + D.weekStartKey(D.todayKey(), Store.user().weekStart)); return; }
         if (k === 'y') { actGo('#/year/' + new Date().getFullYear()); return; }
         if (k === 'a') { actGo('#/archive'); return; }
+        if (k === 'i') { actGo('#/insights/' + new Date().getFullYear()); return; }
         if (k === '/') { e.preventDefault(); actGo('#/search'); return; }
         if (/^[1-5]$/.test(k)) {
           var id = TABS[Number(k) - 1];
