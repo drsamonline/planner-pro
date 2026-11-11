@@ -6,6 +6,7 @@
   "description": "Offline-first day, week, month and year planner. Multi-profile, PIN locked, no accounts, no servers.",
   "author": {
     "name": "Dr. Sohil Momin",
+    "email": "sohilmomin2000@gmail.com",
     "url": "https://github.com/drsamonline"
   },
   "license": "PolyForm-Noncommercial-1.0.0",
@@ -14,8 +15,18 @@
     "type": "git",
     "url": "git+https://github.com/drsamonline/planner-pro.git"
   },
-  "bugs": { "url": "https://github.com/drsamonline/planner-pro/issues" },
-  "keywords": ["planner", "offline", "pwa", "productivity", "journal", "vanilla-js", "local-first"],
+  "bugs": {
+    "url": "https://github.com/drsamonline/planner-pro/issues"
+  },
+  "keywords": [
+    "planner",
+    "offline",
+    "pwa",
+    "productivity",
+    "journal",
+    "vanilla-js",
+    "local-first"
+  ],
   "main": "build/electron/main.cjs",
   "scripts": {
     "start": "python3 -m http.server 8080 --directory app",
@@ -35,11 +46,41 @@
   "build": {
     "appId": "com.drsamonline.plannerpro",
     "productName": "Planner Pro",
-    "directories": { "output": "dist/desktop", "buildResources": "build/electron" },
-    "files": ["app/**/*", "build/electron/**/*", "package.json"],
-    "win": { "target": ["nsis", "portable"], "icon": "app/assets/img/icon-512.png" },
-    "nsis": { "oneClick": false, "allowToChangeInstallationDirectory": true },
-    "mac": { "target": ["dmg", "zip"], "category": "public.app-category.productivity", "icon": "app/assets/img/icon-512.png" },
-    "linux": { "target": ["AppImage", "deb"], "category": "Utility", "icon": "app/assets/img/icon-512.png" }
+    "directories": {
+      "output": "dist/desktop",
+      "buildResources": "build/electron"
+    },
+    "files": [
+      "app/**/*",
+      "build/electron/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ],
+      "icon": "app/assets/img/icon-512.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    },
+    "mac": {
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "category": "public.app-category.productivity",
+      "icon": "app/assets/img/icon-512.png"
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "category": "Utility",
+      "icon": "app/assets/img/icon-512.png"
+    }
   }
 }
