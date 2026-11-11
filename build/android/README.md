@@ -16,7 +16,7 @@ cd android && ./gradlew assembleDebug
 # → android/app/build/outputs/apk/debug/app-debug.apk
 ```
 
-Requirements: Node 20+, JDK 17, Android SDK (platform 34 + build-tools).
+Requirements: Node 20+, JDK 21 (Capacitor 7 compiles with source/target 21), Android SDK (platform 35 + build-tools).
 
 ## Or let CI do it
 
