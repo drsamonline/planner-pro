@@ -79,7 +79,7 @@ const template = [
       },
       {
         label: 'Sponsor this project',
-        click: () => shell.openExternal('https://github.com/drsamonline/sponsors')
+        click: () => shell.openExternal('https://github.com/sponsors/drsamonline')
       }
     ]
   }
