@@ -4,6 +4,22 @@ All notable changes to Planner Pro. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [semantic versioning](https://semver.org/).
 
+## [14.8.0] — 2026-11-11
+
+Getting the work out of the app. The planner can now hand you a folder of plain
+Markdown notes, time a focus block, and be swiped between days.
+
+### Added
+
+- **Markdown vault export.** One `.md` per day (`days/YYYY-MM-DD.md`) and per week (`weeks/YYYY-MM-DD.md`), plus a README, zipped in the browser. Tasks come out as Markdown checkboxes with time, estimate and tags in trailing italics; blocks, notes and reviews come out as sections. No dependency: `assets/js/zip.js` is a ~120-line store-only ZIP writer, verified with `unzip -t`.
+- **Focus timer.** "Focus" on the Schedule card starts a 25-minute countdown labelled with the block you are in (or the next one). The chip in the top bar shows the remaining time with pause/resume and stop. Deliberately in memory only — closing the app ends the session rather than pretending a timer survives a reload.
+- **Swipe between days.** A horizontal swipe on the Day or Today view moves to the previous/next day. Guarded so a 20 px drag or a vertical scroll does nothing, and ignored when the gesture starts on a field, a select or the drag handle.
+
+### Verified
+
+- The end-to-end suite grew from 99 to **104 checks**: the timer starting, pausing, resuming and stopping (state cleared), the vault containing a note per day plus a README and a week note with its focus, the ZIP's local-header signature and end-of-central-directory record, swipe left/right actually changing the day, and a short drag being ignored.
+- The archive itself was checked outside the suite with `unzip -l`, `unzip -p` and `unzip -t` — it lists, extracts and reports no errors.
+
 ## [14.7.0] — 2026-11-11
 
 Closing the loop. A planner that only pushes work forward eventually becomes a

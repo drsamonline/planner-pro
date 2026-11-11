@@ -640,6 +640,217 @@
     });
   }
 
+  /* ---------------- focus timer ----------------
+     In memory on purpose: a timer that survives a reload is a lie about what a
+     timer is. Closing the app ends the session. */
+
+  var focus = null;          // { endsAt, remaining, total, label, paused }
+  var focusTicker = null;
+
+  function renderFocusChip() {
+    var chip = $('focusChip');
+    if (!chip) return;
+    if (!focus) { chip.hidden = true; return; }
+    chip.hidden = false;
+    chip.classList.toggle('paused', !!focus.paused);
+    var left = focus.paused ? focus.remaining : Math.max(0, focus.endsAt - Date.now());
+    var secs = Math.ceil(left / 1000);
+    $('focusTime').textContent = D.pad(Math.floor(secs / 60)) + ':' + D.pad(secs % 60);
+    var pauseBtn = $('focusPause');
+    if (pauseBtn) pauseBtn.textContent = focus.paused ? '▶' : '❙❙';
+  }
+
+  function startFocus(minutes, label) {
+    var mins = Number(minutes) || 25;
+    focus = {
+      endsAt: Date.now() + mins * 60000,
+      remaining: mins * 60000,
+      total: mins * 60000,
+      paused: false,
+      label: label || 'Focus'
+    };
+    if (focusTicker) clearInterval(focusTicker);
+    focusTicker = setInterval(tickFocus, 1000);
+    renderFocusChip();
+    UI.toast(mins + ' minutes of focus — ' + focus.label);
+  }
+
+  function tickFocus() {
+    if (!focus || focus.paused) return;
+    if (Date.now() >= focus.endsAt) {
+      var label = focus.label;
+      stopFocus();
+      UI.toast('Focus block done — ' + label);
+      return;
+    }
+    renderFocusChip();
+  }
+
+  function pauseFocus() {
+    if (!focus) return;
+    if (focus.paused) {
+      focus.endsAt = Date.now() + focus.remaining;
+      focus.paused = false;
+    } else {
+      focus.remaining = Math.max(0, focus.endsAt - Date.now());
+      focus.paused = true;
+    }
+    renderFocusChip();
+  }
+
+  function stopFocus() {
+    if (focusTicker) { clearInterval(focusTicker); focusTicker = null; }
+    focus = null;
+    renderFocusChip();
+  }
+
+  /** Which block is happening now, for the Focus button's label. */
+  function currentBlockLabel(key) {
+    var d = Store.peekDay(key);
+    if (!d) return 'Focus';
+    var now = D.minutesOf(D.nowTime());
+    var live = (d.blocks || []).filter(function (b) {
+      var s = D.minutesOf(b.start);
+      var e = D.minutesOf(b.end) || (s != null ? s + 60 : null);
+      return s != null && now != null && s <= now && now < e;
+    })[0];
+    if (live && live.text) return live.text;
+    var next = (d.blocks || []).filter(function (b) {
+      var s = D.minutesOf(b.start);
+      return s != null && now != null && s >= now;
+    }).sort(function (a, b) { return D.minutesOf(a.start) - D.minutesOf(b.start); })[0];
+    return (next && next.text) ? next.text : 'Focus';
+  }
+
+  /* ---------------- swipe between days ---------------- */
+
+  var swipeStart = null;
+
+  function onSwipeStart(e) {
+    if (currentId !== 'day' && currentId !== 'today') { swipeStart = null; return; }
+    var t = e.target;
+    if (!t || !t.closest) { swipeStart = null; return; }
+    if (t.closest('input, textarea, select, [data-act="drag-start"], .heat-scroll')) { swipeStart = null; return; }
+    swipeStart = { x: e.clientX, y: e.clientY };
+  }
+
+  function onSwipeEnd(e) {
+    if (!swipeStart) return;
+    var dx = e.clientX - swipeStart.x;
+    var dy = e.clientY - swipeStart.y;
+    swipeStart = null;
+    if (Math.abs(dx) < 60 || Math.abs(dy) > 45) return;
+    var key = currentId === 'today' ? D.todayKey() : currentParam;
+    if (!D.isKey(key)) return;
+    actGo('#/day/' + D.addDays(key, dx < 0 ? 1 : -1));
+  }
+
+  /* ---------------- Markdown vault ---------------- */
+
+  function vaultFiles() {
+    var u = Store.user();
+    var files = [];
+    var days = Object.keys(u.days).sort();
+
+    days.forEach(function (k) {
+      var d = u.days[k];
+      var lines = ['# ' + D.longDay(k), ''];
+      if (d.intention) lines.push('> ' + d.intention, '');
+      if ((d.todos || []).length) {
+        lines.push('## Tasks', '');
+        d.todos.forEach(function (t) {
+          var meta = [];
+          if (t.at) meta.push(t.at);
+          if (t.est) meta.push(UI.duration(t.est));
+          (t.tags || []).forEach(function (tag) { meta.push('#' + tag); });
+          if (t.recurringId) meta.push('↻');
+          lines.push('- [' + (t.done ? 'x' : ' ') + '] ' + t.text + (meta.length ? '  _(' + meta.join(' · ') + ')_' : ''));
+        });
+        lines.push('');
+      }
+      if ((d.blocks || []).length) {
+        lines.push('## Schedule', '');
+        d.blocks.slice().sort(function (a, b) { return (D.minutesOf(a.start) || 0) - (D.minutesOf(b.start) || 0); })
+          .forEach(function (b) {
+            lines.push('- **' + (b.start || '--:--') + (b.end ? '–' + b.end : '') + '** ' + (b.text || ''));
+          });
+        lines.push('');
+      }
+      if (d.notes) lines.push('## Notes', '', d.notes, '');
+      if (d.review && d.review.at) {
+        lines.push('## Review', '');
+        if (d.review.went) lines.push('- **Went well:** ' + d.review.went);
+        if (d.review.drained) lines.push('- **Drained:** ' + d.review.drained);
+        if (d.review.next) lines.push('- **For tomorrow:** ' + d.review.next);
+        lines.push('');
+      }
+      files.push({ name: 'days/' + k + '.md', content: lines.join('\n') });
+    });
+
+    Object.keys(u.weeks).sort().forEach(function (k) {
+      var w = u.weeks[k];
+      var lines = ['# Week of ' + D.prettyDay(k), ''];
+      if (w.focus) lines.push('**Focus:** ' + w.focus, '');
+      if ((w.todos || []).length) {
+        lines.push('## Goals', '');
+        w.todos.forEach(function (t) { lines.push('- [' + (t.done ? 'x' : ' ') + '] ' + t.text); });
+        lines.push('');
+      }
+      if (w.review && w.review.at) {
+        lines.push('## Review', '');
+        if (w.review.done) lines.push('### What got done', '', w.review.done, '');
+        if (w.review.stuck) lines.push('### Still worth doing', '', w.review.stuck, '');
+        if (w.review.change) lines.push('### What changes', '', w.review.change, '');
+        if (w.review.focusNext) lines.push('**Next week’s focus:** ' + w.review.focusNext, '');
+      }
+      files.push({ name: 'weeks/' + k + '.md', content: lines.join('\n') });
+    });
+
+    files.push({
+      name: 'README.md',
+      content: [
+        '# ' + u.name + ' — Planner Pro export',
+        '',
+        'Exported ' + D.longDay(D.todayKey()) + ' from Planner Pro ' + 'v14.8.0' + '.',
+        '',
+        '- `days/` — one note per planned day, named `YYYY-MM-DD.md`',
+        '- `weeks/` — one note per week, named by its first day',
+        '',
+        'Tasks are Markdown checkboxes, so most editors (Obsidian, Logseq, iA Writer)',
+        'render them as a real list. Times, estimates and #tags sit in the trailing',
+        'italics so they never get in the way of the sentence.',
+        '',
+        'Nothing here is uploaded anywhere. The planner stores everything in the',
+        'browser it runs in; this folder is the readable copy you own.',
+        '',
+        'Licence: PolyForm Noncommercial 1.0.0 — https://github.com/drsamonline/planner-pro'
+      ].join('\n')
+    });
+
+    return files;
+  }
+
+  function actExportVault() {
+    var files = vaultFiles();
+    if (!files.length) { UI.toast('Nothing to export yet'); return; }
+    try {
+      var blob = global.PlannerZip.build(files);
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url;
+      a.download = 'planner-vault-' + D.todayKey() + '.zip';
+      a.style.display = 'none';
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(function () { document.body.removeChild(a); URL.revokeObjectURL(url); }, 500);
+      Store.markExported();
+      UI.toast('Vault exported — ' + files.length + ' notes');
+      refresh();
+    } catch (err) {
+      UI.toast('Could not build the archive');
+    }
+  }
+
   /* ---------------- reviews ---------------- */
 
   function actWeekReview(weekKey) {
@@ -1756,6 +1967,10 @@
     $('createUserBtn').addEventListener('click', createProfile);
     $('newUserPin').addEventListener('keydown', function (e) { if (e.key === 'Enter') createProfile(); });
 
+    /* ---- swipe between days ---- */
+    document.addEventListener('pointerdown', onSwipeStart);
+    document.addEventListener('pointerup', onSwipeEnd);
+
     /* ---- drag handle ---- */
     document.addEventListener('pointerdown', function (e) {
       var handle = e.target.closest ? e.target.closest('[data-act="drag-start"]') : null;
@@ -1774,7 +1989,7 @@
         case 'palette': openPalette(); break;
         case 'quick-add': quickAddModal(); break;
         case 'account': accountModal(); break;
-        case 'lock': Store.lock(); showLock(); break;
+        case 'lock': Store.lock(); stopFocus(); showLock(); break;
         case 'cycle-theme': cycleTheme(); break;
         case 'todo-toggle': actTodoToggle(el); break;
         case 'todo-prio': actTodoPrio(el); break;
@@ -1802,6 +2017,10 @@
         case 'trash-delete': actTrashDelete(ds.id); break;
         case 'trash-empty': actTrashEmpty(); break;
         case 'duplicate-day': actDuplicateDay(ds.key); break;
+        case 'focus-start': startFocus(ds.minutes || 25, currentBlockLabel(ds.key)); break;
+        case 'focus-pause': pauseFocus(); break;
+        case 'focus-stop': stopFocus(); break;
+        case 'export-vault': actExportVault(); break;
         case 'week-review': actWeekReview(ds.key); break;
         case 'day-review': actDayReview(ds.key); break;
         case 'dismiss-review': Store.snoozeReview(); refresh(); UI.toast('Hidden until tomorrow'); break;
@@ -2044,7 +2263,9 @@
   /* Exposed for the end-to-end suite: pure helpers with no side effects. */
   global.PlannerDebug = {
     icsFor: icsFor, parseDateQuery: parseDateQuery, icsEsc: icsEsc,
-    parseQuickAdd: parseQuickAdd, moveRow: moveRow
+    parseQuickAdd: parseQuickAdd, moveRow: moveRow,
+    vaultFiles: vaultFiles, startFocus: startFocus, stopFocus: stopFocus,
+    focusState: function () { return focus; }
   };
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);

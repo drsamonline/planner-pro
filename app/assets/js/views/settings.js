@@ -82,6 +82,7 @@
         '<input type="file" id="importFile" accept="application/json,.json" data-file="import" hidden>' +
         '<input type="file" id="importEncFile" accept=".planner,application/json" data-file="import-encrypted" hidden>' +
         '<button class="btn btn-ghost" data-act="export-md">' + icon('note') + 'Export all as Markdown</button>' +
+        '<button class="btn btn-ghost" data-act="export-vault">' + icon('download') + 'Export Markdown vault (.zip)</button>' +
         '<div style="border-top:1px solid var(--line);margin:6px 0 2px"></div>' +
         '<p class="tiny dim" style="margin:0">Encrypted backup — AES-256, unlocked with a passphrase. Safe to keep in cloud storage. There is no recovery if you forget it.</p>' +
         '<div class="btn-row">' +

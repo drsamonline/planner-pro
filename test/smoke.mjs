@@ -870,6 +870,102 @@ await step('bulk move sends tasks to another day', async () => {
 });
 
 /* ------------------------------------------------------------------ */
+console.log('\n— focus timer, swipe & vault —');
+await step('the focus timer starts, pauses and stops', async () => {
+  await page.evaluate(() => { location.hash = '#/day/' + DateUtil.todayKey(); });
+  await sleep(400);
+  await page.click('[data-act="focus-start"]');
+  await sleep(350);
+  ok(await visible('#focusChip'), 'focus chip not shown');
+  ok(/^\d\d:\d\d$/.test(await textOf('#focusTime')), 'timer text malformed');
+
+  await page.click('[data-act="focus-pause"]');
+  await sleep(250);
+  ok(await page.$('#focusChip.paused'), 'pause not reflected in the chip');
+  await page.click('[data-act="focus-pause"]');
+  await sleep(200);
+  ok(!(await page.$('#focusChip.paused')), 'resume failed');
+
+  await page.click('[data-act="focus-stop"]');
+  await sleep(250);
+  ok(!(await visible('#focusChip')), 'chip still visible after stop');
+  eq(await page.evaluate(() => PlannerDebug.focusState()), null, 'timer state not cleared');
+});
+await step('the Markdown vault has a note per day', async () => {
+  const res = await page.evaluate(() => {
+    const wk = DateUtil.weekStartKey(DateUtil.todayKey(), Store.user().weekStart);
+    Store.week(wk, true).focus = 'Vault test week';
+    Store.saveNow();
+
+    const files = PlannerDebug.vaultFiles();
+    const day = files.filter((f) => f.name === 'days/' + DateUtil.todayKey() + '.md')[0];
+    const week = files.filter((f) => f.name === 'weeks/' + wk + '.md')[0];
+    return {
+      count: files.length,
+      hasReadme: files.some((f) => f.name === 'README.md'),
+      dayBody: day ? day.content : '',
+      weekBody: week ? week.content : ''
+    };
+  });
+  ok(res.count > 2, 'too few notes: ' + res.count);
+  ok(res.hasReadme, 'README missing');
+  ok(res.dayBody.indexOf('# ') === 0, 'day note should start with a heading');
+  ok(res.dayBody.length > 40, 'day note is empty');
+  ok(res.weekBody.indexOf('Vault test week') >= 0, 'week note missing its focus');
+});
+await step('the zip writer produces a valid container', async () => {
+  const res = await page.evaluate(async () => {
+    const files = [{ name: 'a.md', content: '# hello' }, { name: 'days/2026-01-01.md', content: 'x' }];
+    const blob = PlannerZip.build(files);
+    const buf = new Uint8Array(await blob.arrayBuffer());
+    const text = new TextDecoder('latin1').decode(buf);
+    return {
+      sig: Array.from(buf.slice(0, 4)).join(','),
+      size: buf.length,
+      hasName: text.indexOf('days/2026-01-01.md') >= 0,
+      hasEocd: text.indexOf('PK\u0005\u0006') >= 0
+    };
+  });
+  eq(res.sig, '80,75,3,4', 'not a zip (bad local header signature)');
+  ok(res.hasName, 'filename missing from the archive');
+  ok(res.hasEocd, 'end-of-central-directory record missing');
+  ok(res.size > 100, 'archive suspiciously small');
+});
+await step('swiping the day view moves to the next day', async () => {
+  await page.evaluate(() => { location.hash = '#/day/2026-10-10'; });
+  await sleep(450);
+  await page.evaluate(() => {
+    const el = document.getElementById('view');
+    const opts = (x) => ({ bubbles: true, clientX: x, clientY: 620, pointerType: 'touch' });
+    el.dispatchEvent(new PointerEvent('pointerdown', opts(900)));
+    el.dispatchEvent(new PointerEvent('pointerup', opts(700)));
+  });
+  await sleep(450);
+  const hash = await page.evaluate(() => location.hash);
+  ok(hash.indexOf('2026-10-11') >= 0, 'swipe left should go to the next day, got ' + hash);
+
+  await page.evaluate(() => {
+    const el = document.getElementById('view');
+    const opts = (x) => ({ bubbles: true, clientX: x, clientY: 620, pointerType: 'touch' });
+    el.dispatchEvent(new PointerEvent('pointerdown', opts(700)));
+    el.dispatchEvent(new PointerEvent('pointerup', opts(900)));
+  });
+  await sleep(450);
+  ok((await page.evaluate(() => location.hash)).indexOf('2026-10-10') >= 0, 'swipe right should go back');
+});
+await step('a short drag is not a swipe', async () => {
+  const before = await page.evaluate(() => location.hash);
+  await page.evaluate(() => {
+    const el = document.getElementById('view');
+    const opts = (x) => ({ bubbles: true, clientX: x, clientY: 620, pointerType: 'touch' });
+    el.dispatchEvent(new PointerEvent('pointerdown', opts(700)));
+    el.dispatchEvent(new PointerEvent('pointerup', opts(680)));
+  });
+  await sleep(350);
+  eq(await page.evaluate(() => location.hash), before, 'a 20px drag should not navigate');
+});
+
+/* ------------------------------------------------------------------ */
 console.log('\n— weekly & daily reviews —');
 await step('the weekly review is due on the configured day', async () => {
   const due = await page.evaluate(() => {

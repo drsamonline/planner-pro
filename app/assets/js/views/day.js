@@ -70,7 +70,10 @@
       /* schedule + notes */
       h += '<div class="grid" style="gap:var(--gap)">' +
         '<div class="card"><div class="card-head"><h2>' + icon('clock') + 'Schedule</h2>' +
-        '<button class="btn btn-ghost btn-sm" data-act="block-add" data-key="' + key + '">' + icon('plus') + 'Block</button></div>' +
+        '<div class="btn-row">' +
+        '<button class="btn btn-quiet btn-sm" data-act="focus-start" data-key="' + key + '" data-minutes="25" title="Start a 25-minute focus block">' + icon('clock') + 'Focus</button>' +
+        '<button class="btn btn-ghost btn-sm" data-act="block-add" data-key="' + key + '">' + icon('plus') + 'Block</button>' +
+        '</div></div>' +
         (d.blocks.length
           ? '<div>' + d.blocks.slice().sort(function (a, b) {
               return (D.minutesOf(a.start) || 0) - (D.minutesOf(b.start) || 0);

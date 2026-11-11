@@ -26,7 +26,7 @@
 
   global.Views.about = {
     title: 'About',
-    subtitle: function () { return 'Version 14.7 · offline & local-first'; },
+    subtitle: function () { return 'Version 14.8 · offline & local-first'; },
 
     render: function () {
       var h = '';
@@ -35,7 +35,7 @@
         '<div><strong>Planner Pro</strong><small>Day · week · month · year planner</small></div></div>' +
         '<p class="small muted">A planner that behaves like a tool, not a website. It runs entirely in your browser, works with no internet connection, and stores every task and note on this device — no account, no analytics, no server.</p>' +
         '<div class="btn-row">' +
-        '<span class="pill">v14.7</span><span class="pill">Offline-first</span><span class="pill">Multi-profile</span><span class="pill">No tracking</span>' +
+        '<span class="pill">v14.8</span><span class="pill">Offline-first</span><span class="pill">Multi-profile</span><span class="pill">No tracking</span>' +
         '</div></div>';
 
       h += '<div class="grid g2">' +
@@ -57,6 +57,7 @@
         }).join('') + '</div></div>';
 
       h += '<div class="card"><div class="card-head"><h2>' + icon('note') + 'How your data works</h2></div>' +
+        '<p class="small muted">The Markdown vault export writes one note per day and per week into a zip — readable in Obsidian, Logseq or any text editor, forever.</p>' +
         '<p class="small muted">Reviews live on the week and the day they belong to, so they archive and export with everything else. Set the review day in Settings; the nudge appears on Today.</p>' +
         '<p class="small muted">A PIN is stored as a PBKDF2-SHA256 hash (120 000 iterations, per-profile salt) — never as the profile key, and never in the clear.</p>' +
         '<p class="small muted">Encrypted backups use AES-256-GCM with a PBKDF2-derived key, all in this browser. The passphrase is never stored — there is no recovery.</p>' +
