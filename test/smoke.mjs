@@ -677,7 +677,8 @@ console.log('\n— insights & tags —');
 await step('insight aggregates match a known dataset', async () => {
   const res = await page.evaluate(() => {
     const prev = Store.state().activeUser;
-    Store.addUser('Insights Test', '9999');
+    const made = Store.addUser('Insights Test', '9999');
+    const testId = made.id;
     const seed = (k, arr) => {
       const day = Store.day(k, true);
       day.todos = arr.map(([text, done]) => ({ id: Store.uid(), text, done }));
@@ -704,8 +705,8 @@ await step('insight aggregates match a known dataset', async () => {
       heatDone: heat.reduce((a, c) => a + c.done, 0),
       trendLen: Store.trend(30).length
     };
-    Store.auth(prev);
-    Store.removeUser('9999');
+    Store.activate(prev);
+    Store.removeUser(testId);
     return out;
   });
   eq(res.daysPlanned, 4, 'days planned');
@@ -1044,9 +1045,13 @@ await step('rejects a wrong current PIN, then changes it', async () => {
   await typeIn('#curPin', '1234');
   await typeIn('#newPin', '4321');
   await clickAct('change-pin');
-  await sleep(200);
-  const pin = await page.evaluate(() => Store.state().activeUser);
-  eq(pin, '4321', 'PIN not changed');
+  await sleep(600);
+  const pins = await page.evaluate(async () => {
+    const u = Store.user();
+    return { right: await Store.verifyPin(u, '4321'), old: await Store.verifyPin(u, '1234') };
+  });
+  eq(pins.right, true, 'new PIN does not verify');
+  eq(pins.old, false, 'old PIN still works');
 });
 await step('switches theme', async () => {
   await page.select('#setTheme', 'ocean');
@@ -1090,6 +1095,64 @@ await step('round-trips import', async () => {
 await step('rejects an invalid import file', async () => {
   const res = await page.evaluate(() => Store.importJSON('{"nope":1}').ok);
   eq(res, false, 'invalid import accepted');
+});
+
+await step('profiles store a PIN hash, never the PIN', async () => {
+  const res = await page.evaluate(async () => {
+    const st = Store.state();
+    const u = st.users[st.activeUser];
+    const raw = localStorage.getItem('planner_v14') || '';
+    return {
+      hasHash: !!u.pinHash,
+      hasSalt: !!u.pinSalt,
+      iterations: u.pinIter,
+      legacy: u.legacyPin,
+      keyIsPin: /^\d{4}$/.test(st.activeUser),
+      rawHasPin: raw.includes('"4321"'),
+      verifyRight: await Store.verifyPin(u, '4321'),
+      verifyWrong: await Store.verifyPin(u, '0000')
+    };
+  });
+  eq(res.hasHash, true, 'no PIN hash stored');
+  eq(res.hasSalt, true, 'no salt stored');
+  ok(res.iterations >= 100000, 'PBKDF2 iterations too low');
+  eq(res.legacy, null, 'plaintext PIN left behind');
+  eq(res.keyIsPin, false, 'profile still keyed by the PIN');
+  eq(res.rawHasPin, false, 'the PIN appears in the stored document');
+  eq(res.verifyRight, true, 'correct PIN rejected');
+  eq(res.verifyWrong, false, 'wrong PIN accepted');
+});
+await step('a legacy PIN-keyed profile migrates and upgrades', async () => {
+  const res = await page.evaluate(async () => {
+    const backup = Store.exportJSON();
+    const legacy = {
+      v: 14,
+      activeUser: '1234',
+      users: {
+        '1234': {
+          name: 'Legacy', theme: 'midnight', days: {}, weeks: {}, months: {}, years: {},
+          archives: {}, settings: { requirePin: true }
+        }
+      }
+    };
+    Store.importJSON(JSON.stringify(legacy));
+    const st = Store.state();
+    const id = st.activeUser;
+    const before = {
+      keyIsPin: /^\d{4}$/.test(id),
+      legacyPin: st.users[id].legacyPin,
+      hasHash: !!st.users[id].pinHash
+    };
+    const ok = await Store.auth(id, '1234');
+    const after = { hasHash: !!Store.state().users[id].pinHash, legacy: Store.state().users[id].legacyPin };
+    Store.importJSON(backup);
+    return { before, ok, after };
+  });
+  eq(res.before.keyIsPin, false, 'legacy key was not rekeyed');
+  eq(res.before.legacyPin, '1234', 'legacy PIN not carried for the upgrade');
+  eq(res.ok, true, 'legacy PIN did not unlock');
+  eq(res.after.hasHash, true, 'legacy PIN was not hashed on unlock');
+  eq(res.after.legacy, null, 'plaintext survived the upgrade');
 });
 
 /* ------------------------------------------------------------------ */

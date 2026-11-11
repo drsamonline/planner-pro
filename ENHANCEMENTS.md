@@ -131,6 +131,7 @@ Effort is honest wall-clock time for one developer who already knows the code:
 > complete. **14.3.0 — B1 (recurring tasks), B2 (templates), B5 (estimates).**
 > **14.4.0 — B3 (tag filter), B6 (heatmap), B7 (stats/Insights).**
 > **14.5.0 — B8 (encrypted backup), B12 (bulk actions).**
+> **14.6.0 — B18 (PIN hashing + attempt-safe verification).**
 
 | # | Enhancement | Why it matters | Effort | Weight |
 |---|---|---|---|---|
@@ -168,7 +169,7 @@ Effort is honest wall-clock time for one developer who already knows the code:
 | B15 | **Import from CSV** (Todoist, Google Tasks exports) | Lowers the cost of switching | M | ~7 KB |
 | B16 | **Share target** — share text from another Android app into Planner Pro | Turns the phone share sheet into quick capture | S | ~2 KB |
 | B17 | **Swipe left/right between days** on touch | Native feel for the most common navigation | S–M | ~3 KB |
-| B18 | **PIN hashing + attempt throttling** (PBKDF2, 500 ms delay after 5 failures) | Stops shoulder-surfing a plaintext PIN in `localStorage` | S | ~2 KB |
+| B18 | ✅ **shipped in 14.6** — **PIN hashing + attempt throttling** (PBKDF2, 500 ms delay after 5 failures) | Stops shoulder-surfing a plaintext PIN in `localStorage` | S | ~2 KB |
 | B19 | **Panic blur** — hide content when the tab loses focus | Privacy on a shared desk | S | ~1 KB |
 | B20 | **Data health check** — validate the document, offer repair, show orphaned records | Confidence after a browser update | M | ~4 KB |
 
@@ -247,7 +248,7 @@ duplicate day (A10), keyboard-navigable list (A11), minified build.
 **v14.2 — "routines"** — ✅ shipped: drag reorder, keyboard list, natural-language
 quick add, copy day, minified build. **14.3.0** — ✅ recurring tasks (B1),
 templates (B2), estimates + capacity (B5). Still open: weekly review (B9),
-PIN hashing (B18), Markdown vault export (B14), share target (B16), swipe (B17).
+Markdown vault export (B14), share target (B16), swipe (B17), focus timer (B13).
 
 **v15 — "insight"**: year heatmap, stats view, encrypted backups, Markdown vault
 export, IndexedDB + compression, i18n groundwork.

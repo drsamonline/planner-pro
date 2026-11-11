@@ -14,9 +14,9 @@ Day, week, month and year planning in one quiet screen. Multi-profile, PIN-locke
 </p>
 
 <p align="center">
-  <img alt="Version" src="https://img.shields.io/badge/version-14.5.0-8B5CF6">
+  <img alt="Version" src="https://img.shields.io/badge/version-14.6.0-8B5CF6">
   <img alt="License" src="https://img.shields.io/badge/license-PolyForm%20Noncommercial%201.0.0-22D3EE">
-  <img alt="Tests" src="https://img.shields.io/badge/e2e%20checks-92%20passing-34D399">
+  <img alt="Tests" src="https://img.shields.io/badge/e2e%20checks-94%20passing-34D399">
   <img alt="Offline" src="https://img.shields.io/badge/works%20offline-100%25-34D399">
   <img alt="No tracking" src="https://img.shields.io/badge/tracking-none-lightgrey">
   <img alt="Dependencies" src="https://img.shields.io/badge/runtime%20deps-zero-brightgreen">
@@ -87,7 +87,7 @@ and stores everything on your device.
 - **Drag to reorder** — order is meaning in a plan; move a task or block by its handle.
 
 **Craft**
-- Multi-profile with a 4-digit PIN, PIN asked on launch (configurable), profiles never see each other's data.
+- Multi-profile with a 4-digit PIN, stored as a PBKDF2-SHA256 hash (120k iterations, per-profile salt) — never as the profile key. PIN asked on launch (configurable); profiles never see each other's data.
 - Command palette (`Ctrl/⌘ K`) that searches every task, note, block and goal, runs commands, and understands dates (`tomorrow`, `next friday`, `25 dec`).
 - Keyboard shortcuts for everything (`N`, `T`, `D`, `W`, `Y`, `A`, `/`, `1–5`).
 - Four themes — Midnight, Ocean, Light and System — with correct contrast in each.
@@ -189,7 +189,7 @@ date, so a plan belongs to *one* week instead of repeating every week.
 
 ```bash
 npm install          # dev tooling only: puppeteer-core + electron-builder
-npm test             # 92 end-to-end checks in headless Chromium
+npm test             # 94 end-to-end checks in headless Chromium
 npm run build:single # one portable planner-pro.html
 npm run build:web    # zip of the offline web build in dist/
 ```

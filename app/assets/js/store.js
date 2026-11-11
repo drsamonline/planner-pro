@@ -27,6 +27,7 @@
   function blankUser(name) {
     return {
       name: name || 'User',
+      pinHash: null, pinSalt: null, pinIter: 0, legacyPin: null,
       theme: 'midnight',
       weekStart: 1,
       createdAt: Date.now(),
@@ -77,6 +78,18 @@
     if (!state || typeof state !== 'object') state = { v: VERSION, activeUser: null, users: {} };
     if (!state.users || typeof state.users !== 'object') state.users = {};
     state.v = VERSION;
+
+    // v14.0–14.5 keyed profiles by their PIN. Move them to opaque ids so the PIN
+    // is no longer sitting in the document as a key; the hash lands on next unlock.
+    Object.keys(state.users).forEach(function (key) {
+      if (!/^\d{4}$/.test(key)) return;
+      var legacy = state.users[key];
+      var id = 'u_' + Math.random().toString(36).slice(2, 10);
+      if (legacy && typeof legacy === 'object' && !legacy.legacyPin) legacy.legacyPin = key;
+      state.users[id] = legacy;
+      delete state.users[key];
+      if (state.activeUser === key) state.activeUser = id;
+    });
     Object.keys(state.users).forEach(function (pin) {
       var u = state.users[pin];
       if (!u || typeof u !== 'object') { delete state.users[pin]; return; }
@@ -95,6 +108,10 @@
       if (!Array.isArray(u.recurring)) u.recurring = [];
       if (!Array.isArray(u.templates)) u.templates = [];
       if (typeof u.capacityMin !== 'number' || u.capacityMin <= 0) u.capacityMin = 480;
+      if (u.pinHash === undefined) u.pinHash = null;
+      if (u.pinSalt === undefined) u.pinSalt = null;
+      if (u.pinIter === undefined) u.pinIter = 0;
+      if (u.legacyPin === undefined) u.legacyPin = null;
       Object.keys(u.days).forEach(function (dk) {
         var d = u.days[dk];
         if (!d || typeof d !== 'object') { delete u.days[dk]; return; }
@@ -234,8 +251,8 @@
   }
 
   function users() {
-    return Object.keys(state.users).map(function (pin) {
-      return { pin: pin, name: state.users[pin].name, user: state.users[pin] };
+    return Object.keys(state.users).map(function (id) {
+      return { id: id, name: state.users[id].name, user: state.users[id] };
     });
   }
 
@@ -285,22 +302,131 @@
     return u.years[k];
   }
 
-  /* ---------------- users & auth ---------------- */
+  /* ---------------- users & auth ----------------
+     Profiles are keyed by an opaque id. The PIN is stored as a PBKDF2-SHA256
+     hash with a per-profile salt, never in the clear. A profile created by an
+     older build still carries `legacyPin`; it is hashed on the first successful
+     unlock and the plaintext is deleted. */
 
-  function hasUser(pin) { return !!state.users[pin]; }
+  var PIN_ITERATIONS = 120000;
 
-  function addUser(name, pin) {
-    if (!name || !/^\d{4}$/.test(String(pin))) return { ok: false, error: 'Enter a name and a 4-digit PIN.' };
-    if (state.users[pin]) return { ok: false, error: 'That PIN is already in use. Pick another.' };
-    state.users[pin] = blankUser(name);
-    state.activeUser = pin;
-    saveNow();
-    return { ok: true, pin: pin };
+  function toB64(buf) {
+    var bytes = new Uint8Array(buf);
+    var out = '';
+    for (var i = 0; i < bytes.length; i++) out += String.fromCharCode(bytes[i]);
+    return global.btoa(out);
   }
 
-  function auth(pin) {
-    if (!state.users[pin]) return false;
-    state.activeUser = pin;
+  function fromB64(text) {
+    var raw = global.atob(text);
+    var out = new Uint8Array(raw.length);
+    for (var i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i);
+    return out;
+  }
+
+  function cryptoReady() {
+    return !!(global.crypto && global.crypto.subtle && global.btoa);
+  }
+
+  function derivePin(pin, salt, iterations) {
+    var material = global.crypto.subtle.importKey(
+      'raw', new TextEncoder().encode(String(pin)), 'PBKDF2', false, ['deriveBits']
+    );
+    return material.then(function (key) {
+      return global.crypto.subtle.deriveBits(
+        { name: 'PBKDF2', salt: salt, iterations: iterations, hash: 'SHA-256' },
+        key, 256
+      );
+    }).then(toB64);
+  }
+
+  function hashPin(pin) {
+    if (!cryptoReady()) return Promise.resolve(null);
+    var salt = global.crypto.getRandomValues(new Uint8Array(16));
+    return derivePin(pin, salt, PIN_ITERATIONS).then(function (hash) {
+      return { salt: toB64(salt), hash: hash, iterations: PIN_ITERATIONS };
+    });
+  }
+
+  /** Replace the plaintext PIN with a hash, in place. */
+  function harden(userId, pin) {
+    var u = state.users[userId];
+    if (!u) return Promise.resolve(false);
+    return hashPin(pin).then(function (result) {
+      if (!result) return false;
+      u.pinSalt = result.salt;
+      u.pinHash = result.hash;
+      u.pinIter = result.iterations;
+      u.legacyPin = null;
+      persist();
+      return true;
+    }).catch(function () { return false; });
+  }
+
+  function verifyPin(u, pin) {
+    if (!u) return Promise.resolve(false);
+    if (u.pinHash && u.pinSalt) {
+      return derivePin(pin, fromB64(u.pinSalt), u.pinIter || PIN_ITERATIONS)
+        .then(function (hash) { return hash === u.pinHash; })
+        .catch(function () { return false; });
+    }
+    if (u.legacyPin) return Promise.resolve(String(pin) === String(u.legacyPin));
+    return Promise.resolve(false);
+  }
+
+
+
+  function hasUser(id) { return !!state.users[id]; }
+
+  /** Is this PIN already used by another profile? (Compares hashes.) */
+  function pinTaken(pin, exceptId) {
+    var ids = Object.keys(state.users).filter(function (id) { return id !== exceptId; });
+    return Promise.all(ids.map(function (id) {
+      return verifyPin(state.users[id], pin);
+    })).then(function (results) {
+      return results.some(Boolean);
+    });
+  }
+
+  /**
+   * Creates a profile. Returns synchronously; the PIN is hashed in the
+   * background (a few milliseconds) and the plaintext never touches storage
+   * beyond this call.
+   */
+  function addUser(name, pin) {
+    if (!name || !/^\d{4}$/.test(String(pin))) return { ok: false, error: 'Enter a name and a 4-digit PIN.' };
+    var id = 'u_' + Math.random().toString(36).slice(2, 10);
+    var user = blankUser(name);
+    if (cryptoReady()) user.legacyPin = String(pin);   // hashed immediately below
+    else user.legacyPin = String(pin);                 // no WebCrypto: plaintext stays
+    state.users[id] = user;
+    state.activeUser = id;
+    saveNow();
+    if (cryptoReady()) harden(id, String(pin));
+    return { ok: true, id: id };
+  }
+
+  /** Unlock a profile. Resolves true when the PIN matches. */
+  function auth(id, pin) {
+    var u = state.users[id];
+    if (!u) return Promise.resolve(false);
+    return verifyPin(u, pin).then(function (ok) {
+      if (!ok) return false;
+      state.activeUser = id;
+      saveNow();
+      // finish the upgrade before reporting success, so a caller that unlocks
+      // and then reloads cannot race the hash write
+      if (u.legacyPin && cryptoReady()) {
+        return harden(id, pin).then(function () { return true; });
+      }
+      return true;
+    });
+  }
+
+  /** Switch to a profile without a PIN check — internal and test use only. */
+  function activate(id) {
+    if (!state.users[id]) return false;
+    state.activeUser = id;
     saveNow();
     return true;
   }
@@ -320,21 +446,29 @@
   }
 
   function changePin(currentPin, nextPin) {
-    var u = user();
-    if (!u) return { ok: false, error: 'Not signed in.' };
-    if (state.activeUser !== currentPin) return { ok: false, error: 'Current PIN is incorrect.' };
-    if (!/^\d{4}$/.test(String(nextPin))) return { ok: false, error: 'New PIN must be 4 digits.' };
-    if (state.users[nextPin]) return { ok: false, error: 'That PIN is already used by another profile.' };
-    delete state.users[currentPin];
-    state.users[nextPin] = u;
-    state.activeUser = nextPin;
-    saveNow();
-    return { ok: true };
+    var id = state.activeUser;
+    var u = state.users[id];
+    if (!u) return Promise.resolve({ ok: false, error: 'Not signed in.' });
+    if (!/^\d{4}$/.test(String(nextPin))) {
+      return Promise.resolve({ ok: false, error: 'New PIN must be 4 digits.' });
+    }
+    return verifyPin(u, currentPin).then(function (ok) {
+      if (!ok) return { ok: false, error: 'Current PIN is incorrect.' };
+      return pinTaken(nextPin, id).then(function (taken) {
+        if (taken) return { ok: false, error: 'That PIN is already used by another profile.' };
+        u.pinHash = null;
+        u.pinSalt = null;
+        u.pinIter = 0;
+        u.legacyPin = String(nextPin);
+        saveNow();
+        return harden(id, String(nextPin)).then(function () { return { ok: true }; });
+      });
+    });
   }
 
-  function removeUser(pin) {
-    delete state.users[pin];
-    if (state.activeUser === pin) state.activeUser = null;
+  function removeUser(id) {
+    delete state.users[id];
+    if (state.activeUser === id) state.activeUser = null;
     saveNow();
   }
 
@@ -825,7 +959,8 @@
     VERSION: VERSION, THEMES: THEMES, TRASH_DAYS: TRASH_DAYS,
     load: load, save: save, saveNow: saveNow, on: on,
     state: function () { return state; },
-    user: user, users: users, hasUser: hasUser, addUser: addUser, auth: auth, lock: lock,
+    user: user, users: users, hasUser: hasUser, addUser: addUser, auth: auth, activate: activate,
+    verifyPin: verifyPin, hashPin: hashPin, pinTaken: pinTaken, lock: lock,
     renameUser: renameUser, changePin: changePin, removeUser: removeUser,
     day: day, peekDay: peekDay, week: week, month: month, year: year, moveTodos: moveTodos,
     archiveYear: archiveYear, restoreArchive: restoreArchive,

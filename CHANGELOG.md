@@ -4,6 +4,34 @@ All notable changes to Planner Pro. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [semantic versioning](https://semver.org/).
 
+## [14.6.0] — 2026-11-11
+
+The PIN stops being a secret written in the file. Profiles are now keyed by an
+opaque id and the PIN is stored as a salted PBKDF2 hash — never in the clear,
+never as the key. **This release migrates stored data; the app does it on first
+launch, without asking.**
+
+### Changed
+
+- **Profile storage.** `state.users` is keyed by a generated id (`u_ab12cd34`) instead of the PIN. Each profile carries `pinHash`, `pinSalt` and `pinIter` (PBKDF2-SHA256, 120 000 iterations, 16-byte random salt, 256-bit derived key).
+- **Unlock is asynchronous.** `Store.auth(id, pin)` resolves after the hash comparison (and, for a legacy profile, after the hash is written).
+- `Store.addUser` still returns synchronously — the hash is computed in the background and lands within milliseconds.
+- `Store.changePin` is now async and verifies the current PIN by hash before setting the new one; it also refuses a PIN another profile already uses (compared by hash, not by key).
+
+### Added
+
+- `Store.activate(id)` — switch profile without a PIN check, for internal use and tests.
+
+### Migration
+
+- A document written by 14.0–14.5 (PIN as the key) is rekeyed on load: each profile gets an id, the old PIN is parked in `legacyPin`, and `activeUser` is remapped.
+- On the first successful unlock of such a profile the PIN is hashed, `legacyPin` is deleted, and the plaintext is gone from storage for good.
+- If a browser has no WebCrypto, the profile keeps working on `legacyPin` (plaintext) — the app is honest about that rather than failing to open.
+
+### Verified
+
+- The end-to-end suite grew from 92 to **94 checks**: the stored document contains a hash and a salt but not the PIN and not a PIN-shaped key; the correct PIN verifies and a wrong one does not; a synthetic 14.5 document is rekeyed, unlocks, and has its plaintext replaced by a hash; plus the existing lock/reload flows now exercising the async path.
+
 ## [14.5.0] — 2026-11-11
 
 Trust. The planner can now hand you a backup that is safe to leave in cloud

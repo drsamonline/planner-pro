@@ -20,7 +20,7 @@
 
   var currentId = 'today';
   var currentParam = '';
-  var pendingPin = null;
+  var pendingId = null;
   var installPrompt = null;
   var clockTimer = null;
   var palIndex = 0;
@@ -101,7 +101,7 @@
     $('lockBack').hidden = true;
     $('lockUsers').hidden = false;
     $('newUserBox').hidden = false;
-    pendingPin = null;
+    pendingId = null;
     renderLockUsers();
   }
 
@@ -116,7 +116,7 @@
     }
     $('lockHint').textContent = 'Choose a profile';
     list.innerHTML = users.map(function (u) {
-      return '<button class="user-chip" data-pick="' + esc(u.pin) + '" type="button">' +
+      return '<button class="user-chip" data-pick="' + esc(u.id) + '" type="button">' +
         '<span class="avatar">' + esc(UI.initials(u.name)) + '</span>' +
         '<span class="chip-body"><span class="chip-name">' + esc(u.name) + '</span>' +
         '<span class="chip-meta">' + esc(dayCount(u.user)) + ' days planned</span></span>' +
@@ -128,9 +128,9 @@
     return Object.keys((u && u.days) || {}).length;
   }
 
-  function pickUser(pin) {
-    pendingPin = pin;
-    var u = Store.state().users[pin];
+  function pickUser(id) {
+    pendingId = id;
+    var u = Store.state().users[id];
     $('lockHint').textContent = 'Enter the PIN for ' + (u ? u.name : 'this profile');
     $('lockUsers').hidden = true;
     $('newUserBox').hidden = true;
@@ -141,7 +141,7 @@
   }
 
   function backToUsers() {
-    pendingPin = null;
+    pendingId = null;
     $('lockUsers').hidden = false;
     $('newUserBox').hidden = false;
     $('pinForm').hidden = true;
@@ -153,15 +153,24 @@
   function tryUnlock(e) {
     if (e) e.preventDefault();
     var pin = ($('pinInput').value || '').trim();
-    if (!pendingPin) return;
-    if (pin !== pendingPin) {
-      $('pinInput').value = '';
-      UI.toast('Wrong PIN — try again');
-      $('pinInput').focus();
-      return;
-    }
-    Store.auth(pendingPin);
-    showApp();
+    if (!pendingId || !pin) return;
+
+    var submit = $('pinForm').querySelector('button[type="submit"]');
+    if (submit) submit.disabled = true;
+
+    Store.auth(pendingId, pin).then(function (ok) {
+      if (submit) submit.disabled = false;
+      if (!ok) {
+        $('pinInput').value = '';
+        UI.toast('Wrong PIN — try again');
+        $('pinInput').focus();
+        return;
+      }
+      showApp();
+    }).catch(function () {
+      if (submit) submit.disabled = false;
+      UI.toast('Could not check the PIN on this device');
+    });
   }
 
   function createProfile() {
@@ -948,11 +957,14 @@
   function actChangePin() {
     var cur = ($('curPin').value || '').trim();
     var next = ($('newPin').value || '').trim();
-    var res = Store.changePin(cur, next);
-    if (!res.ok) { UI.toast(res.error); return; }
-    $('curPin').value = '';
-    $('newPin').value = '';
-    UI.toast('PIN updated');
+    if (!cur || !next) { UI.toast('Enter the current and the new PIN'); return; }
+    UI.toast('Updating…');
+    Store.changePin(cur, next).then(function (res) {
+      if (!res.ok) { UI.toast(res.error); return; }
+      $('curPin').value = '';
+      $('newPin').value = '';
+      UI.toast('PIN updated');
+    }).catch(function () { UI.toast('Could not update the PIN'); });
   }
 
   function actDeleteProfile() {
