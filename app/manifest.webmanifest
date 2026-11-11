@@ -15,6 +15,15 @@
   "theme_color": "#0B1220",
   "lang": "en",
   "dir": "ltr",
+  "share_target": {
+    "action": "./index.html",
+    "method": "GET",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url"
+    }
+  },
   "categories": [
     "productivity",
     "lifestyle",

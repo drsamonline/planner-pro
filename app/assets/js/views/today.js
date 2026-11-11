@@ -143,6 +143,10 @@
         UI.bars(bars) +
         '<div class="tiny dim">' + bars.reduce(function (a, b) { return a + b.stats.done; }, 0) + ' tasks completed this week</div></div>';
 
+      /* month grid, only where the rail is hidden */
+      h += '<div class="card mobile-only"><div class="card-head"><h2>' + icon('day') + 'Month</h2></div>' +
+        '<div class="mini-cal mobile-cal" id="miniCalMobile"></div></div>';
+
       h += '</div></div>';
 
       return h;

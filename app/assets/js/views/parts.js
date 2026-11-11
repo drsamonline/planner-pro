@@ -127,6 +127,40 @@
     return '<div class="rows">' + list.map(function (t) { return todoRow(t, scope, key); }).join('') + '</div>';
   }
 
+  /** A month grid: one dot per planned day, ring for today, tint for the open day. */
+  function miniCalendar(monthKey, opts) {
+    var D = global.DateUtil;
+    var o = opts || {};
+    var year = Number(monthKey.slice(0, 4));
+    var month = Number(monthKey.slice(5, 7)) - 1;
+    var first = new Date(year, month, 1);
+    var daysInMonth = new Date(year, month + 1, 0).getDate();
+    var lead = first.getDay();
+    var today = D.todayKey();
+    var out = '<div class="mc-head">' +
+      '<button class="mc-nav" data-act="cal-prev" aria-label="Previous month">' + icon('left') + '</button>' +
+      '<span class="mc-title">' + esc(D.MONTHS[month]) + ' ' + year + '</span>' +
+      '<button class="mc-nav" data-act="cal-next" aria-label="Next month">' + icon('right') + '</button>' +
+      '</div><div class="mc-grid">';
+
+    D.DAYS_SHORT.forEach(function (d) { out += '<span class="mc-dow">' + d.charAt(0) + '</span>'; });
+    for (var i = 0; i < lead; i++) out += '<span class="mc-pad"></span>';
+
+    for (var day = 1; day <= daysInMonth; day++) {
+      var key = year + '-' + D.pad(month + 1) + '-' + D.pad(day);
+      var st = Store.dayStats(key);
+      var cls = 'mc-day';
+      if (key === today) cls += ' is-today';
+      if (o.selected && key === o.selected) cls += ' is-open';
+      out += '<button class="' + cls + '" data-act="cal-day" data-key="' + key + '" title="' + esc(D.prettyDay(key)) + '">' +
+        '<span class="mc-num">' + day + '</span>' +
+        (st.total ? '<span class="mc-dot' + (st.pct === 100 ? ' full' : '') + '"></span>' : '') +
+        '</button>';
+    }
+    out += '</div>';
+    return out;
+  }
+
   /** Rendered review answers, used by the week and day views. */
   function reviewBody(review, kind) {
     if (!review || !review.at) return '';
@@ -172,7 +206,7 @@
 
   global.Parts = {
     editingId: null, selectionKey: null, selectedIds: [], expandedId: null,
-    loadBar: loadBar, reviewBody: reviewBody,
+    loadBar: loadBar, reviewBody: reviewBody, miniCalendar: miniCalendar,
     todoRow: todoRow, goalRow: goalRow, blockRow: blockRow,
     composer: composer, rows: rows
   };

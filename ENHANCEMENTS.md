@@ -135,6 +135,7 @@ Effort is honest wall-clock time for one developer who already knows the code:
 > **14.7.0 — B9 (weekly review), B10 (end-of-day review).**
 > **14.8.0 — B13 (focus timer), B14 (Markdown vault), B17 (swipe).**
 > **14.9.0 — B4 (subtasks), B15 (CSV import), B19 (panic blur), B20 (data health).**
+> **14.10.0 — B11 (mini calendar), B16 (share target). Tier B complete: 20/20.**
 >
 > **Scope decision:** i18n (C3) and everything that touches a network — user-owned
 > sync (C4), a sync server (C7) — are dropped. The app has no networking code and
@@ -169,12 +170,12 @@ Effort is honest wall-clock time for one developer who already knows the code:
 | B8 | ✅ **shipped in 14.5** — **Encrypted backup** — AES-GCM via WebCrypto with a passphrase, `.planner` file | Makes it safe to keep the backup in Drive/Dropbox | M | ~6 KB |
 | B9 | ✅ **shipped in 14.7** — **Weekly review mode** — a guided 5-question card on a chosen weekday, answers saved into that week | The habit that makes the rest work | M | ~5 KB |
 | B10 | ✅ **shipped in 14.7** — **End-of-day review** — three prompts appended to the day's notes | Cheap reflection, no new screen | S | ~2 KB |
-| B11 | **Mini calendar** in the sidebar with dot density per day | Orientation: "where am I, what's coming" | M | ~5 KB |
+| B11 | ✅ **shipped in 14.10** — **Mini calendar** in the sidebar with dot density per day | Orientation: "where am I, what's coming" | M | ~5 KB |
 | B12 | ✅ **shipped in 14.5** — **Bulk actions** — select several tasks, move to another day / delete | Fixes the "20 stale tasks" cleanup chore | M | ~6 KB |
 | B13 | ✅ **shipped in 14.8** — **Focus timer** on the current block (Pomodoro, no notifications) | Time-boxing without leaving the app | S–M | ~4 KB |
 | B14 | ✅ **shipped in 14.8** — **Markdown vault export** — one `.md` per day inside a zip (store-only zip, no dependency) | Makes the data readable by Obsidian/Logseq forever | M | ~6 KB |
 | B15 | ✅ **shipped in 14.9** — **Import from CSV** (Todoist, Google Tasks exports) | Lowers the cost of switching | M | ~7 KB |
-| B16 | **Share target** — share text from another Android app into Planner Pro | Turns the phone share sheet into quick capture | S | ~2 KB |
+| B16 | ✅ **shipped in 14.10** — **Share target** — share text from another Android app into Planner Pro | Turns the phone share sheet into quick capture | S | ~2 KB |
 | B17 | ✅ **shipped in 14.8** — **Swipe left/right between days** on touch | Native feel for the most common navigation | S–M | ~3 KB |
 | B18 | ✅ **shipped in 14.6** — **PIN hashing + attempt throttling** (PBKDF2, 500 ms delay after 5 failures) | Stops shoulder-surfing a plaintext PIN in `localStorage` | S | ~2 KB |
 | B19 | ✅ **shipped in 14.9** — **Panic blur** — hide content when the tab loses focus | Privacy on a shared desk | S | ~1 KB |

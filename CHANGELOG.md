@@ -4,6 +4,23 @@ All notable changes to Planner Pro. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [semantic versioning](https://semver.org/).
 
+## [14.10.0] — 2026-11-11
+
+Two ways in and one way to see. Tier B of the roadmap is now complete.
+
+### Added
+
+- **Month at a glance.** A mini calendar in the rail: one dot per day with work, a ring on today, a tint on the day you are looking at. Arrows page through months; clicking a day opens it. On phones the same grid sits in a card at the bottom of Today, since the rail is hidden there.
+- **Share into the planner.** The manifest declares a GET `share_target`, so Chrome on Android can hand shared text straight to the app. It arrives as `?text=`, is stripped from the URL immediately, and opens quick add prefilled — where the existing parser turns "call the clinic tomorrow 4pm #health" into a dated, tagged task.
+
+### Changed
+
+- The mini calendar follows the view: opening a day moves it to that month, and paging it is a temporary peek that resets on the next navigation.
+
+### Verified
+
+- The end-to-end suite grew from 108 to **111 checks**: the month grid having the right number of days, dots for planned days and a marker on today; paging months and clicking through to a day; share text being read from the query, the query being stripped, a plain URL producing nothing, and quick add opening prefilled.
+
 ## [14.9.0] — 2026-11-11
 
 The last of the local features. Steps inside tasks, a way in for other people's

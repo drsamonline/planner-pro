@@ -32,6 +32,7 @@
      ====================================================================== */
   function boot() {
     Store.load();
+    pendingShare = readShare();
     UI.initModal();
     Store.on(onStoreEvent);
     bindEvents();
@@ -203,6 +204,7 @@
 
     var archived = Store.autoArchive();
     if (archived.length) UI.toast('Archived ' + archived.join(', '));
+    setTimeout(consumeShare, 350);
 
     if (!location.hash || location.hash === '#' || location.hash === '#/') location.hash = '#/today';
     else route();
@@ -265,6 +267,8 @@
     currentId = id;
     currentParam = param || '';
     cursor = -1;
+    // the calendar always follows the view; paging it is a temporary peek
+    calMonth = D.monthKey((id === 'day' && D.isKey(currentParam)) ? currentParam : D.todayKey());
     if (selection.key && (id !== 'day' && id !== 'today')) {
       selection = { key: null, ids: [] };
     }
@@ -298,6 +302,7 @@
     // the floating add button would sit on top of a view's own composer
     $('app').classList.toggle('has-composer', ['today', 'day', 'week', 'year'].indexOf(id) >= 0);
     if (isRoute) window.scrollTo({ top: 0, behavior: 'instant' in document.documentElement.style ? 'instant' : 'auto' });
+    renderMiniCal();
     if (id === 'insights') {
       var heat = document.querySelector('.heat-scroll');
       if (heat && heat.scrollWidth > heat.clientWidth) heat.scrollLeft = heat.scrollWidth;
@@ -638,6 +643,62 @@
         });
       }
     });
+  }
+
+  /* ---------------- mini calendar ---------------- */
+
+  var calMonth = null;
+
+  function currentMonthKey() {
+    if (!calMonth) {
+      var k = (currentId === 'day' && D.isKey(currentParam)) ? currentParam : D.todayKey();
+      calMonth = D.monthKey(k);
+    }
+    return calMonth;
+  }
+
+  function renderMiniCal() {
+    var key = currentMonthKey();
+    var selected = (currentId === 'day' && D.isKey(currentParam)) ? currentParam : D.todayKey();
+    var html = global.Parts.miniCalendar(key, { selected: selected });
+    ['miniCal', 'miniCalMobile'].forEach(function (id) {
+      var host = $(id);
+      if (host) host.innerHTML = html;
+    });
+  }
+
+  function calShift(delta) {
+    var key = currentMonthKey();
+    var year = Number(key.slice(0, 4));
+    var month = Number(key.slice(5, 7)) - 1 + delta;
+    var d = new Date(year, month, 1);
+    calMonth = d.getFullYear() + '-' + D.pad(d.getMonth() + 1);
+    renderMiniCal();
+  }
+
+  /* ---------------- share target ----------------
+     Chrome on Android can hand a share straight to the app: the manifest
+     declares a GET share target, so the text arrives as query parameters. */
+
+  var pendingShare = null;
+
+  function readShare() {
+    var params = new URLSearchParams(location.search);
+    var text = (params.get('text') || '').trim();
+    var title = (params.get('title') || '').trim();
+    var url = (params.get('url') || '').trim();
+    if (!text && !title && !url) return null;
+    var body = [text, title, url].filter(function (x) { return x; }).join(' ').trim();
+    if (!body) return null;
+    try { history.replaceState({}, '', location.pathname + location.hash); } catch (e) { /* file:// */ }
+    return body.slice(0, 300);
+  }
+
+  function consumeShare() {
+    if (!pendingShare) return;
+    var text = pendingShare;
+    pendingShare = null;
+    quickAddModal(text);
   }
 
   /* ---------------- subtasks ---------------- */
@@ -1860,12 +1921,13 @@
       (bits.length ? ' ' + bits.join(' ') : '');
   }
 
-  function quickAddModal() {
+  function quickAddModal(prefill) {
     var tk = D.todayKey();
     UI.openModal({
       title: 'Quick add',
       body: '<div class="field"><label for="qaText">Task</label>' +
-        '<input type="text" id="qaText" placeholder="Call the clinic tomorrow 4pm #health" autocomplete="off"></div>' +
+        '<input type="text" id="qaText" placeholder="Call the clinic tomorrow 4pm #health" autocomplete="off" ' +
+        'value="' + esc(prefill || '') + '"></div>' +
         '<div id="qaPreview" class="tiny dim" style="margin-top:8px">' +
         'Type a date, a time or #tag — they are picked out automatically.</div>' +
         '<div class="field" style="margin-top:12px"><label for="qaDate">Day (overrides the text)</label>' +
@@ -2215,6 +2277,9 @@
         case 'trash-delete': actTrashDelete(ds.id); break;
         case 'trash-empty': actTrashEmpty(); break;
         case 'duplicate-day': actDuplicateDay(ds.key); break;
+        case 'cal-prev': calShift(-1); break;
+        case 'cal-next': calShift(1); break;
+        case 'cal-day': actGo('#/day/' + ds.key); break;
         case 'row-expand': actRowExpand(el); break;
         case 'sub-toggle': actSubToggle(el); break;
         case 'sub-del': actSubDel(el); break;
@@ -2477,6 +2542,7 @@
     icsFor: icsFor, parseDateQuery: parseDateQuery, icsEsc: icsEsc,
     parseQuickAdd: parseQuickAdd, moveRow: moveRow,
     vaultFiles: vaultFiles, startFocus: startFocus, stopFocus: stopFocus, parseCsv: parseCsv,
+    readShare: readShare, openQuickAdd: quickAddModal,
     focusState: function () { return focus; }
   };
 

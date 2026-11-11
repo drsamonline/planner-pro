@@ -439,6 +439,44 @@ label { font-size: 12px; color: var(--text-2); font-weight: 550; display: block;
   border-radius: var(--r-sm); font-size: 13.5px;
 }
 
+/* ---------- mini calendar ---------- */
+.mini-cal { display: grid; gap: 6px; padding: 0 10px 10px; }
+.mc-head { display: flex; align-items: center; justify-content: space-between; gap: 4px; }
+.mc-title { font-size: 11.5px; font-weight: 600; color: var(--text-2); letter-spacing: .01em; }
+.mc-nav {
+  width: 20px; height: 20px; border: 0; border-radius: 5px; background: transparent;
+  color: var(--text-3); display: grid; place-items: center;
+}
+.mc-nav .i { width: 13px; height: 13px; }
+.mc-nav:hover { background: var(--surface-3); color: var(--text); }
+.mc-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+.mc-dow { font-size: 9px; text-align: center; color: var(--text-3); padding-bottom: 2px; }
+.mc-pad { display: block; }
+.mc-day {
+  position: relative; aspect-ratio: 1; min-width: 0; border: 0; border-radius: 5px;
+  background: transparent; color: var(--text-2); font-size: 10.5px;
+  display: grid; place-items: center; padding: 0;
+  font-variant-numeric: tabular-nums;
+}
+.mc-day:hover { background: var(--surface-3); color: var(--text); }
+.mc-day.is-today { box-shadow: inset 0 0 0 1px var(--accent); color: var(--text); font-weight: 700; }
+.mc-day.is-open { background: var(--accent-soft); color: var(--text); }
+.mc-dot {
+  position: absolute; bottom: 2px; left: 50%; transform: translateX(-50%);
+  width: 3px; height: 3px; border-radius: 50%; background: var(--text-3);
+}
+.mc-dot.full { background: var(--ok); }
+.rail-cal { margin-top: 6px; border-top: 1px solid var(--line); padding-top: 10px; }
+
+/* the mobile copy of the calendar lives in a card on Today */
+.mini-cal.mobile-cal { display: none; padding: 0; }
+.mobile-only { display: none; }
+@media (max-width: 767px) { .mobile-only { display: block; } }
+@media (max-width: 767px) {
+  .rail-cal { display: none; }
+  .mini-cal.mobile-cal { display: grid; }
+}
+
 /* ---------- subtasks ---------- */
 .sub-toggle {
   width: 16px; height: 16px; padding: 0; border: 0; background: transparent;

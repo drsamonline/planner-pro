@@ -1070,6 +1070,62 @@ await step('panic blur follows the setting', async () => {
 });
 
 /* ------------------------------------------------------------------ */
+console.log('\n— mini calendar & share target —');
+await step('the mini calendar shows the month with dots for planned days', async () => {
+  await page.evaluate(() => {
+    const d = Store.day('2026-11-20', true);
+    d.todos = [{ id: 'cal1', text: 'Has work', done: true }];
+    Store.saveNow();
+    location.hash = '#/today';
+  });
+  await sleep(500);
+
+  const res = await page.evaluate(() => {
+    const host = document.getElementById('miniCal');
+    const days = host.querySelectorAll('.mc-day').length;
+    const dots = host.querySelectorAll('.mc-dot').length;
+    const today = host.querySelector('.mc-day.is-today');
+    return { days, dots, hasToday: !!today, title: host.querySelector('.mc-title').textContent };
+  });
+  ok(res.days >= 28 && res.days <= 31, 'wrong day count: ' + res.days);
+  ok(res.dots >= 1, 'no dots for planned days');
+  ok(res.hasToday, 'today is not marked');
+  ok(/November 2026|\w+ 2026/.test(res.title), 'month title looks wrong: ' + res.title);
+});
+await step('the mini calendar navigates months and days', async () => {
+  const before = await page.evaluate(() => document.querySelector('#miniCal .mc-title').textContent);
+  await page.click('#miniCal [data-act="cal-prev"]');
+  await sleep(300);
+  const after = await page.evaluate(() => document.querySelector('#miniCal .mc-title').textContent);
+  ok(after !== before, 'month did not change');
+
+  await page.click('#miniCal [data-act="cal-day"]');
+  await sleep(450);
+  ok((await page.evaluate(() => location.hash)).indexOf('#/day/') >= 0, 'day click did not navigate');
+});
+await step('a shared text is parsed from the URL and opens quick add', async () => {
+  const parsed = await page.evaluate(() => {
+    history.replaceState({}, '', location.pathname + '?text=' + encodeURIComponent('Call the clinic tomorrow 4pm'));
+    const text = PlannerDebug.readShare();
+    return { text, search: location.search };
+  });
+  eq(parsed.text, 'Call the clinic tomorrow 4pm', 'share text not read from the query');
+  eq(parsed.search, '', 'the share query should be stripped from the URL');
+
+  const empty = await page.evaluate(() => {
+    history.replaceState({}, '', location.pathname);
+    return PlannerDebug.readShare();
+  });
+  eq(empty, null, 'a plain URL should not produce a share');
+
+  await page.evaluate(() => PlannerDebug.openQuickAdd('Call the clinic tomorrow 4pm'));
+  await sel('#qaText');
+  eq(await page.$eval('#qaText', (el) => el.value), 'Call the clinic tomorrow 4pm', 'quick add not prefilled');
+  await page.keyboard.press('Escape');
+  await sleep(250);
+});
+
+/* ------------------------------------------------------------------ */
 console.log('\n— weekly & daily reviews —');
 await step('the weekly review is due on the configured day', async () => {
   const due = await page.evaluate(() => {
