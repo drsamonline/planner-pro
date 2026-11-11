@@ -28,6 +28,7 @@
         (rel === 'Today' ? '' : '<button class="btn btn-ghost btn-sm" data-act="go" data-href="#/day/' + D.todayKey() + '">Today</button>') +
         '<button class="btn btn-ghost btn-sm" data-act="print" title="Print this day">' + icon('print') + '<span class="btn-label">Print</span></button>' +
         '<button class="btn btn-ghost btn-sm" data-act="export-day" data-key="' + key + '">' + icon('download') + '<span class="btn-label">Markdown</span></button>' +
+        '<button class="btn btn-ghost btn-sm" data-act="export-ics" data-days="' + key + '" title="Export to a calendar app">' + icon('clock') + '<span class="btn-label">Calendar</span></button>' +
         '</div>';
 
       h += '<div class="card card-pad"><input class="intention" type="text" value="' + esc(d.intention || '') +

@@ -4,6 +4,36 @@ All notable changes to Planner Pro. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [semantic versioning](https://semver.org/).
 
+## [14.1.0] — 2026-11-11
+
+Safety and speed-of-use. No new concepts, only fewer ways to lose work and fewer
+round trips to do the obvious thing. Data schema unchanged — existing v14 data
+opens as-is.
+
+### Added
+
+- **Undo on every destructive action.** Deleting a task, removing a time block, clearing completed tasks and carrying tasks over all show an undo toast (8 seconds) that puts things back exactly where they were.
+- **Recently deleted (30-day trash).** Anything you delete is kept for 30 days under Settings → Recently deleted, with per-item restore, permanent delete and "empty trash". The list prunes itself and is capped at 300 entries.
+- **Backup nudge.** If you have never exported, or last exported more than 14 days ago, the Today view shows a one-line reminder with an export button and a "Later" snooze (3 days).
+- **PWA update prompt.** When a new service worker is cached, the app offers "A new version is ready — Reload" instead of silently running yesterday's build.
+- **ICS export.** Day and Week views export a real `.ics` calendar file (RFC 5545, CRLF, folded lines, escaped text) built from your time blocks, so a day can land in Google or Apple Calendar without any integration.
+- **Date jumps in the command palette.** Type `tomorrow`, `yesterday`, `next friday`, `25 dec`, `dec 25` or `2026-12-24` and the palette offers to open that day.
+- **Inline editing.** Clicking a task's text turns it into a field in place; Enter saves, Escape cancels, clicking away saves. The edit dialog is gone.
+- **Accessibility.** A skip link, a polite live region that announces deletions, and `aria-live` on the toast.
+
+### Changed
+
+- Exports now record when the last backup happened (`lastExportAt`), which drives the nudge.
+- The delete toast names the item ("Deleted “Walk 30 minutes”") instead of saying "Deleted".
+
+### Fixed
+
+- The command palette could show a stale item list while typing a date — the date jump is now built into the same list as the commands.
+
+### Verified
+
+- The end-to-end suite grew from 53 to **65 checks**, covering undo, trash restore and expiry, the backup nudge, ICS output and escaping, date parsing, inline editing (including Escape), the skip link and the live region.
+
 ## [14.0.0] — 2026-11-11
 
 The rewrite. Same planner, rebuilt as a small offline app instead of a single

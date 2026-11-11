@@ -150,15 +150,74 @@ await step('marks a task as priority', async () => {
   await sleep(150);
   ok((await count('.rows .row.prio')) === 1, 'priority style missing');
 });
-await step('edits a task through the modal', async () => {
+await step('edits a task inline (no modal)', async () => {
   await page.click('.rows .row:not(.done) .row-text');
-  await sel('#modalBody input');
-  await page.$eval('#modalBody input', (el) => { el.value = 'Second task (edited)'; });
-  const btns = await page.$$('#modalActions .btn');
-  await btns[btns.length - 1].click();
-  await sleep(180);
+  await sel('.row-input');
+  ok(!(await visible('#modalBody')), 'inline edit should not open the modal');
+  await page.$eval('.row-input', (el) => { el.value = 'Second task (edited)'; });
+  await page.keyboard.press('Enter');
+  await sleep(220);
   const texts = await page.$$eval('.rows .row-text', (els) => els.map((e) => e.textContent));
   ok(texts.some((t) => t.includes('(edited)')), 'edit not applied: ' + texts.join(' | '));
+  ok(!(await visible('.row-input')), 'edit field should close after Enter');
+});
+await step('Escape cancels an inline edit', async () => {
+  const before = await page.$$eval('.rows .row-text', (els) => els.map((e) => e.textContent).join('|'));
+  await page.click('.rows .row:not(.done) .row-text');
+  await sel('.row-input');
+  await page.$eval('.row-input', (el) => { el.value = 'SHOULD NOT SAVE'; });
+  await page.keyboard.press('Escape');
+  await sleep(200);
+  const after = await page.$$eval('.rows .row-text', (els) => els.map((e) => e.textContent).join('|'));
+  eq(after, before, 'Escape should discard the edit');
+});
+await step('undo restores a deleted task', async () => {
+  const before = await count('.rows .row');
+  await page.click('.rows .row [data-act="todo-del"]');
+  await sleep(220);
+  eq(await count('.rows .row'), before - 1, 'task was not deleted');
+  ok(await visible('.toast-action'), 'undo button missing from the toast');
+  await page.click('.toast-action');
+  await sleep(280);
+  eq(await count('.rows .row'), before, 'undo did not restore the task');
+});
+await step('deleted tasks land in the trash and can be restored', async () => {
+  const before = await count('.rows .row');
+  const label = await page.$eval('.rows .row .row-text', (el) => el.textContent);
+  await page.click('.rows .row [data-act="todo-del"]');
+  await sleep(220);
+  await nav('settings');
+  const trashText = await page.$eval('#view', (el) => el.textContent);
+  ok(trashText.includes('Recently deleted'), 'trash card missing');
+  ok(trashText.includes(label.slice(0, 18)), 'deleted task not listed in the trash');
+  await page.click('[data-act="trash-restore"]');
+  await sleep(280);
+  await nav('day');
+  eq(await count('.rows .row'), before, 'restore from trash failed');
+  await nav('today');
+});
+await step('clear completed is undoable', async () => {
+  if ((await count('.rows .row.done')) === 0) {
+    await page.click('.rows .row .check');
+    await sleep(200);
+  }
+  ok((await count('.rows .row.done')) > 0, 'no completed task to clear');
+  const before = await count('.rows .row');
+  await clickAct('clear-done');
+  await sleep(250);
+  ok((await count('.rows .row')) < before, 'completed tasks were not cleared');
+  await page.click('.toast-action');
+  await sleep(280);
+  eq(await count('.rows .row'), before, 'undo of clear-completed failed');
+});
+await step('trash expires after 30 days', async () => {
+  const kept = await page.evaluate(() => {
+    const u = Store.user();
+    u.trash = u.trash || [];
+    u.trash.push({ id: 'old1', at: Date.now() - 40 * 86400000, text: 'ancient', kind: 'item' });
+    return Store.trash().some((e) => e.id === 'old1');
+  });
+  eq(kept, false, 'entries older than 30 days should be pruned');
 });
 await step('adds a schedule block, edits it, then deletes it', async () => {
   await clickAct('block-add');
@@ -244,6 +303,86 @@ await step('exports a day as Markdown', async () => {
   });
   ok(md, 'export button present');
   ok(await visible('[data-act="export-day"]'), 'export button missing');
+});
+
+/* ------------------------------------------------------------------ */
+console.log('\n— exports, backup & accessibility —');
+await step('exports a day as an ICS calendar file', async () => {
+  const ics = await page.evaluate(() => {
+    const key = DateUtil.todayKey();
+    const d = Store.day(key, true);
+    if (!d.blocks.length) d.blocks.push({ id: 'x1', start: '09:00', end: '10:00', text: 'Deep work' });
+    return PlannerDebug.icsFor([key]);
+  });
+  ok(ics.startsWith('BEGIN:VCALENDAR'), 'bad ICS header');
+  ok(ics.includes('BEGIN:VEVENT') && ics.includes('DTSTART:'), 'no event emitted');
+  ok(ics.includes('SUMMARY:Deep work'), 'summary missing');
+  ok(ics.trim().endsWith('END:VCALENDAR'), 'bad ICS footer');
+  ok(ics.includes('\r\n'), 'ICS must use CRLF line endings');
+  ok(await visible('[data-act="export-ics"]'), 'calendar button missing from the day view');
+});
+await step('ICS escaping handles commas and semicolons', async () => {
+  const out = await page.evaluate(() => PlannerDebug.icsEsc('Clinic, 4pm; bring notes'));
+  ok(out.includes('\\,') && out.includes('\\;'), 'ICS escaping failed: ' + out);
+});
+await step('backup nudge appears when exports are stale', async () => {
+  await page.evaluate(() => {
+    Store.user().lastExportAt = 0;
+    Store.user().backupSnoozeUntil = 0;
+    Store.saveNow();
+    location.hash = '#/today';
+  });
+  await sleep(320);
+  await page.evaluate(() => { location.hash = '#/day'; });
+  await sleep(150);
+  await page.evaluate(() => { location.hash = '#/today'; });
+  await sleep(250);
+  ok(await visible('.notice'), 'backup notice not shown');
+  await page.click('[data-act="dismiss-backup"]');
+  await sleep(280);
+  ok(!(await visible('.notice')), 'notice not dismissed');
+  const snoozed = await page.evaluate(() => Store.backupStatus().due);
+  eq(snoozed, false, 'snooze did not take effect');
+});
+await step('exporting a backup records the time', async () => {
+  const before = await page.evaluate(() => Store.user().lastExportAt);
+  await page.evaluate(() => Store.markExported());
+  const after = await page.evaluate(() => Store.user().lastExportAt);
+  ok(after > before, 'lastExportAt not updated');
+});
+await step('palette jumps to a natural-language date', async () => {
+  const parsed = await page.evaluate(() => ({
+    tomorrow: PlannerDebug.parseDateQuery('tomorrow'),
+    friday: PlannerDebug.parseDateQuery('next friday'),
+    xmas: PlannerDebug.parseDateQuery('25 dec'),
+    junk: PlannerDebug.parseDateQuery('qqqzzz')
+  }));
+  const t = await page.evaluate(() => DateUtil.addDays(DateUtil.todayKey(), 1));
+  eq(parsed.tomorrow, t, 'tomorrow');
+  ok(/^\d{4}-\d{2}-\d{2}$/.test(parsed.friday), 'weekday parse failed');
+  eq(parsed.xmas.slice(5), '12-25', 'day-month parse failed');
+  eq(parsed.junk, null, 'junk should not parse');
+
+  await page.evaluate(() => document.activeElement.blur());
+  await page.keyboard.down('Control');
+  await page.keyboard.press('KeyK');
+  await page.keyboard.up('Control');
+  await sleep(180);
+  await page.type('#paletteInput', 'tomorrow');
+  await sleep(220);
+  const first = await textOf('.pal-item');
+  ok(first.includes('Tomorrow'), 'date jump item missing: ' + first);
+  await page.keyboard.press('Enter');
+  await sleep(280);
+  ok((await page.evaluate(() => location.hash)).includes(t), 'palette date jump did not navigate');
+});
+await step('skip link exists for keyboard users', async () => {
+  ok(await page.$('.skip'), 'skip link missing');
+  const label = await page.$eval('.skip', (el) => el.textContent);
+  ok(label.toLowerCase().includes('skip'), 'skip link label');
+});
+await step('a live region is present for screen readers', async () => {
+  ok(await page.$('#liveRegion[aria-live="polite"]'), 'live region missing');
 });
 
 /* ------------------------------------------------------------------ */

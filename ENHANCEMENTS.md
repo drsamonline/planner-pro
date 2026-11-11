@@ -122,22 +122,26 @@ Effort is honest wall-clock time for one developer who already knows the code:
 
 ## 2. Enhancements worth adding
 
-### Tier A — high value, small weight (do these next)
+### Tier A — high value, small weight
+
+> **Shipped in 14.1.0:** A1 (undo), A2 (trash), A3 (backup reminder), A4 (PWA update
+> prompt), A5 (inline editing), A7 (ICS export), A9 (palette date jump), A12
+> (accessibility pass). Still open in this tier: A6, A8, A10, A11.
 
 | # | Enhancement | Why it matters | Effort | Weight |
 |---|---|---|---|---|
-| A1 | **Undo** for delete/clear/carry (toast with "Undo", 8-second window) | Deleting a task is currently permanent and instant. This is the single biggest safety win. | S | ~2 KB |
-| A2 | **Trash with 30-day retention** behind the undo toast | Recovers "I deleted the wrong day" a week later | S–M | ~4 KB |
-| A3 | **Backup reminder** — nudge if no export in 14 days, dismissible | Local-first apps die from forgotten backups | S | ~1 KB |
-| A4 | **PWA update prompt** — "A new version is ready · Reload" | Without it, users stay on an old cached build for weeks | S | ~1 KB |
-| A5 | **Inline task editing** (click text → edit in place, Enter to save) instead of a modal | Removes a whole round-trip for the most common action | S | ~2 KB |
+| A1 | ✅ **shipped in 14.1** — **Undo** for delete/clear/carry (toast with "Undo", 8-second window) | Deleting a task used to be permanent and instant — the single biggest safety gap in the app. | S | ~2 KB |
+| A2 | ✅ **shipped in 14.1** — **Trash with 30-day retention** behind the undo toast | Recovers "I deleted the wrong day" a week later | S–M | ~4 KB |
+| A3 | ✅ **shipped in 14.1** — **Backup reminder** — nudge if no export in 14 days, dismissible | Local-first apps die from forgotten backups | S | ~1 KB |
+| A4 | ✅ **shipped in 14.1** — **PWA update prompt** — "A new version is ready · Reload" | Without it, users stay on an old cached build for weeks | S | ~1 KB |
+| A5 | ✅ **shipped in 14.1** — **Inline task editing** (click text → edit in place, Enter to save) instead of a modal | Removes a whole round-trip for the most common action | S | ~2 KB |
 | A6 | **Drag to reorder** tasks and blocks (pointer events, no library) | Order is meaning in a plan; currently fixed by creation order | M | ~4 KB |
-| A7 | **ICS export** for a day or a week | Puts the plan into Google/Apple Calendar without any integration | S–M | ~3 KB |
+| A7 | ✅ **shipped in 14.1** — **ICS export** for a day or a week | Puts the plan into Google/Apple Calendar without any integration | S–M | ~3 KB |
 | A8 | **Natural-language quick add** — "call clinic tomorrow 4pm #health" fills date, time and tag | One keystroke instead of four fields | M | ~5 KB |
-| A9 | **Quick date jump** in the palette — type "next friday", "24 dec" | Fastest way to reach a distant day | S | ~2 KB |
+| A9 | ✅ **shipped in 14.1** — **Quick date jump** in the palette — type "next friday", "24 dec" | Fastest way to reach a distant day | S | ~2 KB |
 | A10 | **Duplicate day / copy yesterday's blocks** | Most days are variations of a routine | S | ~2 KB |
 | A11 | **Keyboard-navigable task list** (`j/k`, `x` to tick, `e` to edit) | Makes the app genuinely fast for heavy users | M | ~3 KB |
-| A12 | **Skip link + `aria-live` on counts** | Screen-reader correctness; small effort | S | ~1 KB |
+| A12 | ✅ **shipped in 14.1** — **Skip link + `aria-live` on counts** | Screen-reader correctness; small effort | S | ~1 KB |
 
 ### Tier B — valuable, medium weight
 
@@ -231,9 +235,10 @@ purpose, with the reason:
 
 ## 5. Suggested release plan
 
-**v14.1 — "safe and quick"** (Tier A): undo + trash, backup reminder, PWA update
-prompt, inline editing, ICS export, drag reorder, palette date jump, accessibility
-pass, minified build. No new concepts, only fewer sharp edges.
+**v14.1 — "safe and quick"** — ✅ shipped: undo + trash, backup reminder, PWA
+update prompt, inline editing, ICS export, palette date jump, accessibility pass.
+Still open from this batch: drag-to-reorder (A6), natural-language quick add (A8),
+duplicate day (A10), keyboard-navigable list (A11), minified build.
 
 **v14.2 — "routines"** (Tier B, first half): recurring tasks, templates, duplicate
 day, tags, estimated minutes, weekly review mode.

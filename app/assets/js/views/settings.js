@@ -4,6 +4,23 @@
   var esc = UI.esc, icon = UI.icon, D = global.DateUtil;
   global.Views = global.Views || {};
 
+  function kindLabel(kind) {
+    if (kind === 'items') return 'Completed tasks';
+    if (kind === 'block') return 'Time block';
+    if (kind === 'carry') return 'Carried tasks';
+    return 'Task';
+  }
+
+  function ago(at) {
+    var mins = Math.round((Date.now() - (at || 0)) / 60000);
+    if (mins < 1) return 'just now';
+    if (mins < 60) return mins + ' min ago';
+    var hours = Math.round(mins / 60);
+    if (hours < 24) return hours + ' h ago';
+    var days = Math.round(hours / 24);
+    return days + (days === 1 ? ' day ago' : ' days ago');
+  }
+
   global.Views.settings = {
     title: 'Settings',
     subtitle: function () { return 'Profile, appearance, data'; },
@@ -64,6 +81,25 @@
         '<div class="row-actions" style="margin-top:6px">' +
         '<button class="btn btn-quiet btn-sm" data-act="go" data-href="#/about">' + icon('info') + 'About &amp; shortcuts</button>' +
         '</div></div>' +
+        '</div>';
+
+      /* recently deleted */
+      var trash = Store.trash();
+      h += '<div class="card"><div class="card-head"><h2>' + icon('trash') + 'Recently deleted</h2>' +
+        '<span class="pill num">' + trash.length + '</span></div>' +
+        '<p class="tiny dim">Deletions stay here for ' + Store.TRASH_DAYS + ' days, then clear themselves.</p>' +
+        (trash.length
+          ? '<div class="rows">' + trash.slice(0, 25).map(function (e) {
+            return '<div class="row" style="grid-template-columns:minmax(0,1fr) auto">' +
+              '<div style="min-width:0"><div class="row-text">' + esc(e.text || 'Item') + '</div>' +
+              '<div class="tiny dim">' + esc(kindLabel(e.kind)) + ' · ' + esc(ago(e.at)) + '</div></div>' +
+              '<div class="row-actions" style="opacity:1">' +
+              '<button class="btn btn-quiet btn-sm" data-act="trash-restore" data-id="' + esc(e.id) + '">Restore</button>' +
+              '<button class="icon-btn danger" data-act="trash-delete" data-id="' + esc(e.id) + '" aria-label="Remove for good">' +
+              icon('x') + '</button></div></div>';
+          }).join('') + '</div>' +
+          '<div class="row-actions"><button class="btn btn-ghost btn-sm" data-act="trash-empty">' + icon('trash') + 'Empty trash</button></div>'
+          : UI.empty('trash', 'Nothing deleted yet — deletes land here first.')) +
         '</div>';
 
       /* danger */

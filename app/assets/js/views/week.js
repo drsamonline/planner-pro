@@ -38,6 +38,8 @@
           '<button class="btn btn-ghost btn-sm" data-act="go" data-href="#/week/' + thisWeek + '">This week</button>') +
         '<span class="spacer"></span>' +
         '<button class="btn btn-ghost btn-sm" data-act="print">' + icon('print') + '<span class="btn-label">Print</span></button>' +
+        '<button class="btn btn-ghost btn-sm" data-act="export-ics" data-days="' + dates.join(',') + '" title="Export this week to a calendar app">' +
+        icon('clock') + '<span class="btn-label">Calendar</span></button>' +
         '</div>';
 
       /* focus + goals */

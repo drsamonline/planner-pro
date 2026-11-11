@@ -32,6 +32,7 @@
       createdAt: Date.now(),
       quickNotes: '',
       days: {}, weeks: {}, months: {}, years: {}, archives: {},
+      trash: [], lastExportAt: 0, backupSnoozeUntil: 0,
       settings: { carryOver: true, autoArchive: true, requirePin: true }
     };
   }
@@ -87,6 +88,9 @@
       ['days', 'weeks', 'months', 'years', 'archives'].forEach(function (k) {
         if (!u[k] || typeof u[k] !== 'object') u[k] = {};
       });
+      if (!Array.isArray(u.trash)) u.trash = [];
+      if (typeof u.lastExportAt !== 'number') u.lastExportAt = 0;
+      if (typeof u.backupSnoozeUntil !== 'number') u.backupSnoozeUntil = 0;
       Object.keys(u.days).forEach(function (dk) {
         var d = u.days[dk];
         if (!d || typeof d !== 'object') { delete u.days[dk]; return; }
@@ -488,8 +492,88 @@
     return next;
   }
 
+  /* ---------------- trash & undo ----------------
+     Deleting is instant, so every destructive action keeps a copy here for 30
+     days. `undo` in the UI pops the newest entry; Settings lists all of them. */
+  var TRASH_DAYS = 30;
+  var DAY_MS = 86400000;
+
+  function trash() {
+    var u = user();
+    if (!u) return [];
+    if (!Array.isArray(u.trash)) u.trash = [];
+    var cutoff = Date.now() - TRASH_DAYS * DAY_MS;
+    var before = u.trash.length;
+    u.trash = u.trash.filter(function (e) { return (e.at || 0) > cutoff; });
+    if (u.trash.length !== before) save();
+    return u.trash;
+  }
+
+  function trashAdd(entry) {
+    var u = user();
+    if (!u) return null;
+    if (!Array.isArray(u.trash)) u.trash = [];
+    entry.id = uid();
+    entry.at = Date.now();
+    u.trash.unshift(entry);
+    if (u.trash.length > 300) u.trash.length = 300;
+    saveNow();
+    return entry;
+  }
+
+  function trashRemove(id) {
+    var u = user();
+    if (!u || !Array.isArray(u.trash)) return null;
+    var found = null;
+    u.trash = u.trash.filter(function (e) {
+      if (e.id === id) { found = e; return false; }
+      return true;
+    });
+    if (found) saveNow();
+    return found;
+  }
+
+  function trashEmpty() {
+    var u = user();
+    if (!u) return 0;
+    var n = (u.trash || []).length;
+    u.trash = [];
+    saveNow();
+    return n;
+  }
+
+  /* ---------------- backup nudge ---------------- */
+
+  function markExported() {
+    var u = user();
+    if (!u) return;
+    u.lastExportAt = Date.now();
+    saveNow();
+  }
+
+  function backupStatus() {
+    var u = user();
+    if (!u) return null;
+    var hasData = Object.keys(u.days).length > 0;
+    var days = u.lastExportAt ? Math.floor((Date.now() - u.lastExportAt) / DAY_MS) : null;
+    var snoozed = !!u.backupSnoozeUntil && u.backupSnoozeUntil > Date.now();
+    return {
+      hasData: hasData,
+      days: days,
+      snoozed: snoozed,
+      due: hasData && !snoozed && (days === null || days >= 14)
+    };
+  }
+
+  function snoozeBackup(days) {
+    var u = user();
+    if (!u) return;
+    u.backupSnoozeUntil = Date.now() + (days || 3) * DAY_MS;
+    saveNow();
+  }
+
   global.Store = {
-    VERSION: VERSION, THEMES: THEMES,
+    VERSION: VERSION, THEMES: THEMES, TRASH_DAYS: TRASH_DAYS,
     load: load, save: save, saveNow: saveNow, on: on,
     state: function () { return state; },
     user: user, users: users, hasUser: hasUser, addUser: addUser, auth: auth, lock: lock,
@@ -500,6 +584,8 @@
     exportJSON: exportJSON, importJSON: importJSON,
     dayStats: dayStats, monthStats: monthStats, streak: streak, weekBars: weekBars,
     usage: usage, setTheme: setTheme, cycleTheme: cycleTheme,
+    trash: trash, trashAdd: trashAdd, trashRemove: trashRemove, trashEmpty: trashEmpty,
+    markExported: markExported, backupStatus: backupStatus, snoozeBackup: snoozeBackup,
     uid: uid, blankDay: blankDay
   };
 })(window);

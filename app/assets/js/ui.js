@@ -15,13 +15,42 @@
     return '<svg class="i ' + (cls || '') + '" aria-hidden="true"><use href="#i-' + name + '"/></svg>';
   }
 
-  function toast(msg) {
+  /**
+   * toast('Saved')                      plain message
+   * toast('Deleted', {action:'Undo', actionLabel:'Undo', duration:8000})
+   */
+  function toast(msg, opts) {
+    opts = opts || {};
     if (!toastEl) toastEl = document.getElementById('toast');
     if (!toastEl) return;
-    toastEl.textContent = msg;
+
+    toastEl.innerHTML = '';
+    var label = document.createElement('span');
+    label.textContent = msg;
+    toastEl.appendChild(label);
+
+    if (opts.action) {
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'toast-action';
+      btn.textContent = opts.actionLabel || 'Undo';
+      btn.addEventListener('click', function () {
+        hideToast();
+        if (typeof opts.action === 'function') opts.action();
+      });
+      toastEl.appendChild(btn);
+      toastEl.classList.add('has-action');
+    } else {
+      toastEl.classList.remove('has-action');
+    }
+
     toastEl.classList.add('show');
     if (toastTimer) clearTimeout(toastTimer);
-    toastTimer = setTimeout(function () { toastEl.classList.remove('show'); }, 2200);
+    toastTimer = setTimeout(hideToast, opts.duration || (opts.action ? 8000 : 2200));
+  }
+
+  function hideToast() {
+    if (toastEl) toastEl.classList.remove('show');
   }
 
   function initials(name) {
@@ -149,7 +178,7 @@
   }
 
   global.UI = {
-    esc: esc, icon: icon, toast: toast, initials: initials,
+    esc: esc, icon: icon, toast: toast, hideToast: hideToast, initials: initials,
     openModal: openModal, closeModal: closeModal, confirm: confirm, initModal: initModal,
     download: download, fmtBytes: fmtBytes, ring: ring, bars: bars,
     highlight: highlight, empty: empty

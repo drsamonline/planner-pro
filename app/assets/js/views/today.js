@@ -37,6 +37,7 @@
       var bars = Store.weekBars(7);
       var firstName = (u.name || '').split(/\s+/)[0];
       var words = (u.quickNotes || '').trim() ? (u.quickNotes.trim().split(/\s+/).length) : 0;
+      var backup = Store.backupStatus();
       var yesterday = D.addDays(tk, -1);
       var yStats = Store.dayStats(yesterday);
       var yOpen = yStats.total - yStats.done;
@@ -47,6 +48,19 @@
         '<div class="hero-date">' + esc(D.longDay(tk)) + '</div></div>' +
         '<div class="hero-clock" id="clock">' + esc(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })) + '</div>' +
         '</section>';
+
+      /* ---- backup nudge ---- */
+      if (backup && backup.due) {
+        var since = backup.days === null
+          ? 'You have not backed up this planner yet.'
+          : 'Last backup was ' + backup.days + ' days ago.';
+        h += '<div class="notice">' + icon('download') +
+          '<div class="notice-text"><strong>' + esc(since) + '</strong>' +
+          '<span>Everything lives in this browser. One JSON file keeps it safe.</span></div>' +
+          '<button class="btn btn-sm" data-act="export-db">Export backup</button>' +
+          '<button class="btn btn-quiet btn-sm" data-act="dismiss-backup">Later</button>' +
+          '</div>';
+      }
 
       /* ---- stat tiles ---- */
       h += '<section class="stats">' +

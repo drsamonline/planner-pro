@@ -53,6 +53,14 @@
     }
   }
 
+  /** Announce a result to assistive tech without moving focus. */
+  function announce(text) {
+    var el = $('liveRegion');
+    if (!el) return;
+    el.textContent = '';
+    setTimeout(function () { el.textContent = text; }, 40);
+  }
+
   function setSaved(text) {
     var el = $('saveDot');
     if (!el) return;
@@ -330,43 +338,101 @@
     refresh();
   }
 
+  function short(text, n) {
+    text = String(text || '');
+    return text.length > (n || 34) ? text.slice(0, (n || 34) - 1) + '…' : text;
+  }
+
+  /** Put a trashed entry back where it came from. */
+  function restoreEntry(entry) {
+    if (!entry) return;
+    if (entry.kind === 'item' || entry.kind === 'items') {
+      var list = listFor(entry.scope, entry.key);
+      var items = (entry.items || [{ item: entry.item, index: entry.index }]).slice()
+        .sort(function (a, b) { return a.index - b.index; });
+      items.forEach(function (x) {
+        list.splice(Math.min(x.index, list.length), 0, x.item);
+      });
+    } else if (entry.kind === 'block') {
+      var d = Store.day(entry.key, true);
+      d.blocks.splice(Math.min(entry.index, d.blocks.length), 0, entry.item);
+    } else if (entry.kind === 'carry') {
+      var t = Store.day(entry.to, true);
+      t.todos = t.todos.filter(function (x) { return entry.ids.indexOf(x.id) < 0; });
+    }
+    Store.saveNow();
+  }
+
+  function undoEntry(entry) {
+    if (!entry) return;
+    Store.trashRemove(entry.id);
+    restoreEntry(entry);
+    refresh();
+    UI.toast('Restored');
+  }
+
   function actTodoDel(el) {
     var f = findItem(el.dataset.scope, el.dataset.key, el.dataset.id);
     if (!f) return;
-    f.list.splice(f.index, 1);
+    var removed = f.list.splice(f.index, 1)[0];
+    var entry = Store.trashAdd({
+      kind: 'item', scope: el.dataset.scope, key: el.dataset.key,
+      item: removed, index: f.index, text: removed.text
+    });
     Store.save();
     refresh();
-    UI.toast('Deleted');
+    announce('Deleted ' + removed.text);
+    UI.toast('Deleted “' + short(removed.text) + '”', { action: function () { undoEntry(entry); } });
   }
 
   function actTodoEdit(el) {
-    var f = findItem(el.dataset.scope, el.dataset.key, el.dataset.id);
-    if (!f) return;
-    UI.openModal({
-      title: 'Edit item',
-      body: '<div class="field"><label for="editText">Text</label><input type="text" id="editText" value="' + esc(f.item.text) + '"></div>',
-      actions: [
-        { label: 'Cancel', value: null, cls: 'btn-ghost' },
-        {
-          label: 'Save', value: 'save', cls: 'btn', onClick: function () {
-            var v = ($('editText').value || '').trim();
-            if (!v) { UI.toast('Text cannot be empty'); return false; }
-            f.item.text = v;
-            Store.saveNow();
-            refresh();
-          }
-        }
-      ],
-      onMount: function (body) {
-        var input = body.querySelector('input');
-        input.addEventListener('keydown', function (e) {
-          if (e.key === 'Enter') {
-            e.preventDefault();
-            var btns = document.querySelectorAll('#modalActions .btn');
-            if (btns.length) btns[btns.length - 1].click();
-          }
-        });
-      }
+    global.Parts.editingId = el.dataset.id;
+    refresh();
+    var input = document.querySelector('.row-input');
+    if (input) { input.focus(); input.select(); }
+  }
+
+  function commitInline(el, cancel) {
+    if (!global.Parts.editingId) return;
+    var scope = el.dataset.scope, key = el.dataset.key, id = el.dataset.id;
+    var value = (el.value || '').trim();
+    var f = findItem(scope, key, id);
+    global.Parts.editingId = null;
+    if (f && !cancel && value) {
+      f.item.text = value;
+      Store.saveNow();
+    }
+    refresh();
+  }
+
+  /* ---------------- trash ---------------- */
+
+  function actTrashRestore(id) {
+    var entry = Store.trashRemove(id);
+    if (!entry) return;
+    restoreEntry(entry);
+    refresh();
+    UI.toast('Restored');
+  }
+
+  function actTrashDelete(id) {
+    Store.trashRemove(id);
+    refresh();
+    UI.toast('Removed for good');
+  }
+
+  function actTrashEmpty() {
+    var n = Store.trash().length;
+    if (!n) { UI.toast('Trash is already empty'); return; }
+    UI.confirm({
+      title: 'Empty the trash?',
+      message: n + ' deleted item' + (n > 1 ? 's' : '') + ' will be removed permanently. This cannot be undone.',
+      ok: 'Empty trash', danger: true
+    }).then(function (yes) {
+      if (!yes) return;
+      Store.trashEmpty();
+      refresh();
+      UI.toast('Trash emptied');
     });
   }
 
@@ -381,35 +447,52 @@
 
   function actBlockDel(el) {
     var d = Store.day(el.dataset.key, true);
-    d.blocks = d.blocks.filter(function (b) { return b.id !== el.dataset.id; });
+    var index = -1;
+    var removed = null;
+    d.blocks.forEach(function (b, i) { if (b.id === el.dataset.id) { index = i; removed = b; } });
+    if (!removed) return;
+    d.blocks.splice(index, 1);
+    var entry = Store.trashAdd({
+      kind: 'block', key: el.dataset.key, item: removed, index: index,
+      text: removed.text || removed.start
+    });
     Store.save();
     refresh();
+    UI.toast('Block removed', { action: function () { undoEntry(entry); } });
   }
 
   function actCarryOver(from, to) {
     var src = Store.day(from, true);
     var dst = Store.day(to, true);
-    var moved = 0;
+    var ids = [];
     src.todos.forEach(function (t) {
       if (!t.done) {
-        dst.todos.push({ id: Store.uid(), text: t.text, done: false, prio: !!t.prio, carried: true });
-        moved++;
+        var id = Store.uid();
+        dst.todos.push({ id: id, text: t.text, done: false, prio: !!t.prio, carried: true });
+        ids.push(id);
       }
     });
-    if (!moved) { UI.toast('Nothing to carry over'); return; }
+    if (!ids.length) { UI.toast('Nothing to carry over'); return; }
+    var entry = Store.trashAdd({ kind: 'carry', to: to, ids: ids, text: ids.length + ' carried tasks' });
     Store.saveNow();
     refresh();
-    UI.toast('Moved ' + moved + ' unfinished task' + (moved > 1 ? 's' : '') + ' to ' + D.prettyDay(to));
+    UI.toast('Moved ' + ids.length + ' unfinished task' + (ids.length > 1 ? 's' : '') + ' to ' + D.prettyDay(to),
+      { action: function () { undoEntry(entry); } });
   }
 
   function actClearDone(key) {
     var d = Store.day(key, true);
-    var before = d.todos.length;
+    var removed = [];
+    d.todos.forEach(function (t, i) { if (t.done) removed.push({ item: t, index: i }); });
+    if (!removed.length) { UI.toast('Nothing completed yet'); return; }
     d.todos = d.todos.filter(function (t) { return !t.done; });
-    var removed = before - d.todos.length;
+    var entry = Store.trashAdd({
+      kind: 'items', scope: 'day', key: key, items: removed,
+      text: removed.length + ' completed task' + (removed.length > 1 ? 's' : '')
+    });
     Store.saveNow();
     refresh();
-    UI.toast(removed ? 'Cleared ' + removed + ' completed' : 'Nothing completed yet');
+    UI.toast('Cleared ' + removed.length + ' completed', { action: function () { undoEntry(entry); } });
   }
 
   function actMonthGoalAdd(key) {
@@ -521,6 +604,82 @@
     UI.toast('Day exported as Markdown');
   }
 
+  /* ---------------- calendar export (ICS) ---------------- */
+
+  function icsStamp() {
+    return new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+  }
+
+  function icsTime(minutes) {
+    return D.pad(Math.floor(minutes / 60)) + D.pad(minutes % 60) + '00';
+  }
+
+  function icsEsc(text) {
+    return String(text == null ? '' : text)
+      .replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,')
+      .replace(/\r?\n/g, '\\n');
+  }
+
+  /** RFC 5545 folds lines longer than 75 octets. */
+  function icsFold(line) {
+    if (line.length <= 74) return line;
+    var out = line.slice(0, 74);
+    var rest = line.slice(74);
+    while (rest.length) {
+      out += '\r\n ' + rest.slice(0, 73);
+      rest = rest.slice(73);
+    }
+    return out;
+  }
+
+  function icsFor(keys) {
+    var lines = [
+      'BEGIN:VCALENDAR',
+      'VERSION:2.0',
+      'PRODID:-//Planner Pro//Planner Pro 14//EN',
+      'CALSCALE:GREGORIAN',
+      'METHOD:PUBLISH',
+      'X-WR-CALNAME:Planner Pro'
+    ];
+    var events = 0;
+    keys.forEach(function (key) {
+      var day = Store.peekDay(key);
+      if (!day) return;
+      (day.blocks || []).forEach(function (b) {
+        var start = D.minutesOf(b.start);
+        if (start == null || !b.text) return;
+        var end = D.minutesOf(b.end);
+        if (end == null || end <= start) end = start + 60;
+        var dt = key.replace(/-/g, '');
+        lines.push('BEGIN:VEVENT');
+        lines.push('UID:' + b.id + '@planner-pro');
+        lines.push('DTSTAMP:' + icsStamp());
+        lines.push('DTSTART:' + dt + 'T' + icsTime(start));
+        lines.push('DTEND:' + dt + 'T' + icsTime(end));
+        lines.push(icsFold('SUMMARY:' + icsEsc(b.text)));
+        if (day.intention) lines.push(icsFold('DESCRIPTION:' + icsEsc(day.intention)));
+        lines.push('END:VEVENT');
+        events++;
+      });
+    });
+    lines.push('END:VCALENDAR');
+    return events ? lines.join('\r\n') : '';
+  }
+
+  function actExportIcs(days) {
+    var keys = String(days || D.todayKey()).split(',').filter(function (k) { return D.isKey(k); });
+    var content = icsFor(keys);
+    if (!content) {
+      UI.toast('No time blocks to export — add a block first');
+      return;
+    }
+    var name = keys.length > 1
+      ? 'planner-week-' + keys[0] + '.ics'
+      : 'planner-day-' + keys[0] + '.ics';
+    UI.download(name, content, 'text/calendar;charset=utf-8');
+    UI.toast('Calendar file downloaded');
+  }
+
   function allMarkdown() {
     var u = Store.user();
     var out = ['# Planner Pro export — ' + u.name, '', 'Exported ' + D.longDay(D.todayKey()), ''];
@@ -556,7 +715,9 @@
 
   function actExportDb() {
     UI.download('planner-backup-' + D.todayKey() + '.json', Store.exportJSON(), 'application/json');
+    Store.markExported();
     UI.toast('Backup downloaded');
+    refresh();
   }
 
   function actImportDb() {
@@ -667,6 +828,47 @@
     return cmds;
   }
 
+  var MONTH_WORDS = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+
+  function dateFromMonthDay(monthIndex, day) {
+    if (monthIndex < 0 || day < 1 || day > 31) return null;
+    var y = new Date().getFullYear();
+    var key = y + '-' + D.pad(monthIndex + 1) + '-' + D.pad(day);
+    if (D.monthKey(key) !== y + '-' + D.pad(monthIndex + 1)) return null;   // 31 Feb, etc.
+    // a date far in the past probably means next year
+    if (D.diffDays(key, D.todayKey()) < -180) {
+      key = (y + 1) + '-' + D.pad(monthIndex + 1) + '-' + D.pad(day);
+    }
+    return key;
+  }
+
+  /** "tomorrow", "next friday", "24 dec", "dec 24", "2026-12-24" → date key */
+  function parseDateQuery(raw) {
+    var q = String(raw || '').trim().toLowerCase();
+    if (!q) return null;
+    var today = D.todayKey();
+
+    if (q === 'today' || q === 'now') return today;
+    if (q === 'tomorrow' || q === 'tmr' || q === 'tmrw') return D.addDays(today, 1);
+    if (q === 'yesterday') return D.addDays(today, -1);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(q)) return D.isKey(q) ? q : null;
+
+    var wd = q.match(/^(?:next|this|on)?\s*(sun|mon|tue|wed|thu|fri|sat)[a-z]*$/);
+    if (wd) {
+      var names = { sun: 0, mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6 };
+      var delta = (names[wd[1]] - D.weekday(today) + 7) % 7;
+      return D.addDays(today, delta === 0 ? 7 : delta);
+    }
+
+    var a = q.match(/^(\d{1,2})(?:st|nd|rd|th)?\s+([a-z]{3,})$/);
+    if (a) return dateFromMonthDay(MONTH_WORDS.indexOf(a[2].slice(0, 3)), Number(a[1]));
+
+    var b = q.match(/^([a-z]{3,})\s+(\d{1,2})(?:st|nd|rd|th)?$/);
+    if (b) return dateFromMonthDay(MONTH_WORDS.indexOf(b[1].slice(0, 3)), Number(b[2]));
+
+    return null;
+  }
+
   function openPalette() {
     $('palette').hidden = false;
     $('paletteInput').value = '';
@@ -684,6 +886,8 @@
     var cmds = paletteCommands().filter(function (c) {
       return !lower || c.label.toLowerCase().indexOf(lower) >= 0;
     });
+    var jump = parseDateQuery(q);
+
     var results = [];
     if (q.length >= 2) {
       try {
@@ -693,11 +897,21 @@
 
     palItems = [];
     var h = '';
+
+    if (jump) {
+      var jumpLabel = D.relative(jump) || D.prettyDay(jump);
+      palItems.push({ run: function () { actGo('#/day/' + jump); } });
+      h += '<div class="pal-group">Jump to a date</div>' +
+        '<button class="pal-item" data-pal="0" aria-selected="false">' + icon('day') +
+        '<span>Open ' + esc(jumpLabel) + '</span><small>' + esc(jump) + '</small></button>';
+    }
+
     if (cmds.length) {
       h += '<div class="pal-group">Commands</div>';
-      cmds.forEach(function (c, i) {
+      cmds.forEach(function (c) {
+        var idx = palItems.length;
         palItems.push({ run: c.run });
-        h += '<button class="pal-item" data-pal="' + i + '" aria-selected="false">' + icon(c.icon) +
+        h += '<button class="pal-item" data-pal="' + idx + '" aria-selected="false">' + icon(c.icon) +
           '<span>' + esc(c.label) + '</span>' + (c.hint ? '<small>' + esc(c.hint) + '</small>' : '') + '</button>';
       });
     }
@@ -786,6 +1000,11 @@
         case 'import-db': actImportDb(); break;
         case 'export-md': UI.download('planner-export-' + D.todayKey() + '.md', allMarkdown(), 'text/markdown;charset=utf-8'); UI.toast('Markdown exported'); break;
         case 'export-day': actExportDay(ds.key); break;
+        case 'export-ics': actExportIcs(ds.days); break;
+        case 'dismiss-backup': Store.snoozeBackup(3); refresh(); UI.toast('We will remind you in 3 days'); break;
+        case 'trash-restore': actTrashRestore(ds.id); break;
+        case 'trash-delete': actTrashDelete(ds.id); break;
+        case 'trash-empty': actTrashEmpty(); break;
         case 'change-pin': actChangePin(); break;
         case 'delete-profile': actDeleteProfile(); break;
         case 'install': actInstall(); break;
@@ -872,6 +1091,13 @@
       }
     });
 
+    /* ---- inline edit loses focus ---- */
+    document.addEventListener('focusout', function (e) {
+      if (e.target && e.target.classList && e.target.classList.contains('row-input') && global.Parts.editingId) {
+        commitInline(e.target, false);
+      }
+    });
+
     /* ---- palette ---- */
     $('paletteInput').addEventListener('input', function (e) { renderPalette(e.target.value); });
     $('palette').addEventListener('click', function (e) {
@@ -893,6 +1119,11 @@
     /* ---- keyboard ---- */
     document.addEventListener('keydown', function (e) {
       var typing = e.target && (/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName) || e.target.isContentEditable);
+
+      if (e.target && e.target.classList && e.target.classList.contains('row-input')) {
+        if (e.key === 'Enter') { e.preventDefault(); commitInline(e.target, false); return; }
+        if (e.key === 'Escape') { e.preventDefault(); commitInline(e.target, true); return; }
+      }
 
       if (e.key === 'Escape') {
         if (!$('palette').hidden) { closePalette(); return; }
@@ -943,9 +1174,31 @@
     if (!('serviceWorker' in navigator)) return;
     if (location.protocol !== 'http:' && location.protocol !== 'https:') return;
     window.addEventListener('load', function () {
-      navigator.serviceWorker.register('sw.js').catch(function () { /* offline still works from cache-less file */ });
+      navigator.serviceWorker.register('sw.js').then(function (reg) {
+        reg.addEventListener('updatefound', function () {
+          var next = reg.installing;
+          if (!next) return;
+          next.addEventListener('statechange', function () {
+            if (next.state === 'installed' && navigator.serviceWorker.controller) {
+              UI.toast('A new version is ready', {
+                actionLabel: 'Reload',
+                duration: 15000,
+                action: function () {
+                  next.postMessage('skipWaiting');
+                  setTimeout(function () { location.reload(); }, 250);
+                }
+              });
+            }
+          });
+        });
+        // look for a new build once the app has settled
+        setTimeout(function () { reg.update().catch(function () {}); }, 5000);
+      }).catch(function () { /* offline still works from the file system */ });
     });
   }
+
+  /* Exposed for the end-to-end suite: pure helpers with no side effects. */
+  global.PlannerDebug = { icsFor: icsFor, parseDateQuery: parseDateQuery, icsEsc: icsEsc };
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
   else boot();

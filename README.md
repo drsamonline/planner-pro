@@ -14,9 +14,9 @@ Day, week, month and year planning in one quiet screen. Multi-profile, PIN-locke
 </p>
 
 <p align="center">
-  <img alt="Version" src="https://img.shields.io/badge/version-14.0.0-8B5CF6">
+  <img alt="Version" src="https://img.shields.io/badge/version-14.1.0-8B5CF6">
   <img alt="License" src="https://img.shields.io/badge/license-PolyForm%20Noncommercial%201.0.0-22D3EE">
-  <img alt="Tests" src="https://img.shields.io/badge/e2e%20checks-53%20passing-34D399">
+  <img alt="Tests" src="https://img.shields.io/badge/e2e%20checks-65%20passing-34D399">
   <img alt="Offline" src="https://img.shields.io/badge/works%20offline-100%25-34D399">
   <img alt="No tracking" src="https://img.shields.io/badge/tracking-none-lightgrey">
   <img alt="Dependencies" src="https://img.shields.io/badge/runtime%20deps-zero-brightgreen">
@@ -72,16 +72,19 @@ and stores everything on your device.
 - **Year** — year theme, year goals, twelve month cards with goals and task progress.
 - **Archive** — finished years move out of the way automatically; restore, export or delete any of them.
 - **Carry over** — pull yesterday's unfinished tasks into today in one click.
+- **Undo and a 30-day trash** — every delete is reversible, twice over.
 
 **Craft**
 - Multi-profile with a 4-digit PIN, PIN asked on launch (configurable), profiles never see each other's data.
-- Command palette (`Ctrl/⌘ K`) that searches every task, note, block and goal *and* runs commands.
+- Command palette (`Ctrl/⌘ K`) that searches every task, note, block and goal, runs commands, and understands dates (`tomorrow`, `next friday`, `25 dec`).
 - Keyboard shortcuts for everything (`N`, `T`, `D`, `W`, `Y`, `A`, `/`, `1–5`).
 - Four themes — Midnight, Ocean, Light and System — with correct contrast in each.
 - Layout that actually fits: 3-column desktop, icon rail on tablets, bottom tab bar + FAB on phones, no horizontal scroll at 320 px.
 - 44 px touch targets, visible focus rings, `aria-current` navigation, reduced-motion support.
 - Print stylesheet — printing a day or a week gives you clean paper output.
-- Markdown export for a single day or the whole planner.
+- Markdown export for a single day or the whole planner; **ICS export** for a day or a week, so the plan lands in your calendar.
+- Inline editing — click a task, fix it, press Enter. No dialog.
+- A backup nudge if you have not exported in 14 days, and a prompt when a new version is cached.
 
 **Data**
 - One JSON document, versioned, with automatic migration from the v13 layout.
@@ -168,7 +171,7 @@ date, so a plan belongs to *one* week instead of repeating every week.
 
 ```bash
 npm install          # dev tooling only: puppeteer-core + electron-builder
-npm test             # 53 end-to-end checks in headless Chromium
+npm test             # 65 end-to-end checks in headless Chromium
 npm run build:single # one portable planner-pro.html
 npm run build:web    # zip of the offline web build in dist/
 ```
