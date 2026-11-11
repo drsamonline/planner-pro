@@ -99,8 +99,22 @@ and stores everything on your device.
 | Android / ChromeOS | Open the site → menu → **Install app** (or **Add to Home screen**) |
 | iPhone / iPad | Open in Safari → Share → **Add to Home Screen** |
 | Windows / macOS / Linux | Open the site → install icon in the address bar |
-| No browser install | Download `planner-pro.html` from the [latest release](https://github.com/drsamonline/planner-pro/releases/latest) — a single file that runs from your desktop |
-| APK / EXE | Build with the included workflows (see [Building](#building)) |
+| No browser install | Download `planner-pro.html` — one file, double-click it |
+
+### Release downloads
+
+Built by CI from the tagged commit (Windows and macOS binaries are unsigned, so
+SmartScreen/Gatekeeper will ask you to confirm the first launch):
+
+| File | Platform | What it is |
+|---|---|---|
+| [`planner-pro.html`](https://github.com/drsamonline/planner-pro/releases/latest/download/planner-pro.html) | any | The entire app in one file — no server, no internet |
+| [`planner-pro-web.zip`](https://github.com/drsamonline/planner-pro/releases/latest/download/planner-pro-web.zip) | any | Offline web build: unzip, open `index.html` |
+| [`planner-pro-14.0.0-windows-setup.exe`](https://github.com/drsamonline/planner-pro/releases/latest/download/planner-pro-14.0.0-windows-setup.exe) | Windows | Installer (Electron) |
+| [`planner-pro-14.0.0-windows-portable.exe`](https://github.com/drsamonline/planner-pro/releases/latest/download/planner-pro-14.0.0-windows-portable.exe) | Windows | Portable, no install |
+| [`planner-pro-14.0.0-macos-arm64.dmg`](https://github.com/drsamonline/planner-pro/releases/latest/download/planner-pro-14.0.0-macos-arm64.dmg) | macOS (Apple silicon) | Disk image |
+| [`planner-pro_14.0.0_amd64.deb`](https://github.com/drsamonline/planner-pro/releases/latest/download/planner-pro_14.0.0_amd64.deb) | Debian / Ubuntu | Package |
+| `planner-pro-debug.apk` | Android | Debug APK — attached by the [Android workflow](.github/workflows/android.yml); sideload it or install via `adb install` |
 
 **Run from source**
 
@@ -163,12 +177,16 @@ npm run build:web    # zip of the offline web build in dist/
 |---|---|---|
 | Web (offline) | `npm run build:web` | `dist/planner-pro-web.zip` |
 | Single HTML file | `npm run build:single` | `dist/planner-pro.html` |
-| Android APK | [`.github/workflows/android.yml`](.github/workflows/android.yml) | `app-debug.apk` via Capacitor |
-| Windows / macOS / Linux | [`.github/workflows/desktop.yml`](.github/workflows/desktop.yml) | `.exe`, `.dmg`, `.AppImage` via Electron |
+| Android APK | [`.github/workflows/android.yml`](.github/workflows/android.yml) | `app-debug.apk` via Capacitor (JDK 21) |
+| Windows / macOS / Linux | [`.github/workflows/desktop.yml`](.github/workflows/desktop.yml) | `.exe`, `.dmg`, `.AppImage`, `.deb` via Electron |
 
-The APK and desktop binaries are produced by CI (they need an Android SDK and a
-signing setup, which are not present in a browser sandbox). The workflows are
-committed and ready — run them from the **Actions** tab.
+Desktop and Android binaries are built by CI, not on a developer machine: they
+need an Android SDK and per-OS toolchains. Push a `v*` tag (or run the workflow
+from the **Actions** tab) and the artifacts attach to the release.
+
+To sign them for distribution you will additionally need a keystore for Android
+and code-signing certificates for Windows/macOS — see
+[`build/android/README.md`](build/android/README.md).
 
 ## Roadmap
 
