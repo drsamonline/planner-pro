@@ -4,6 +4,31 @@ All notable changes to Planner Pro. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [semantic versioning](https://semver.org/).
 
+## [14.2.0] — 2026-11-11
+
+Interaction. The list becomes something you can shape, and adding a task stops
+feeling like filling in a form. Data schema unchanged; existing v14 data opens
+as-is.
+
+### Added
+
+- **Drag to reorder.** Every task row has a handle. Dragging moves the row in the DOM for live feedback and the order is rebuilt from the final DOM on drop, so a partial drag can never corrupt the list. Works with pointer events, so mouse, pen and touch all behave.
+- **Keyboard-first list.** `j` / `k` move a visible cursor through the list, `x` ticks, `e` edits, `Alt + ↑ / ↓` reorders. The cursor survives a re-render, so ticking a task does not throw you back to the top.
+- **Natural-language quick add.** `call the clinic tomorrow 4pm #health` becomes a task on tomorrow at 16:00, tagged `health`. Understands `today`/`tomorrow`/`yesterday`, weekday names with `next`, `25 dec` / `dec 25`, `4pm` / `16:00`, `#tags` and `!!` for priority — with a live "Saves as:" preview before you commit.
+- **Copy a day.** Bring another day's time blocks and tasks (added unchecked) into the current day, with per-type checkboxes and duplicate-text skipping.
+- **Minified production build.** `npm run build:web` now minifies CSS and JS (whitespace and syntax only, identifiers untouched so cross-file globals keep working): 167 KB → 123 KB, −27 %.
+
+### Changed
+
+- Task rows now carry a drag handle, a metadata area for the time and tags, and a stable `data-row-id`.
+- The quick-add dialog is one text field plus an optional date override, instead of two fields and a checkbox.
+- `README`, `ENHANCEMENTS` and the About screen document the new keys and the copy-day action.
+
+### Verified
+
+- The end-to-end suite grew from 65 to **73 checks**: a real pointer drag that reorders and persists, `j`/`k`/`x`/`Alt+Arrow`, quick-add parsing (with and without matches), the preview matching what is saved, and copy-day semantics (blocks copied, tasks copied unchecked, duplicates skipped).
+- The minified bundle was loaded in a browser and exercised separately — profile creation, task add, palette and parser all behave identically to the readable source.
+
 ## [14.1.0] — 2026-11-11
 
 Safety and speed-of-use. No new concepts, only fewer ways to lose work and fewer

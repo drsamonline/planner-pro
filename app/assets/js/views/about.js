@@ -14,6 +14,10 @@
     ['A', 'Archive'],
     ['/', 'Search'],
     ['1 – 5', 'Switch between the main views'],
+    ['J / K', 'Move down / up the task list'],
+    ['X', 'Tick the focused task'],
+    ['E', 'Edit the focused task'],
+    ['Alt + ↑ / ↓', 'Move the focused task up or down'],
     ['Esc', 'Close palette, dialog or search, or cancel an edit'],
     ['Enter', 'Save an inline edit'],
     ['Ctrl / ⌘ + P', 'Print the current view']
@@ -21,7 +25,7 @@
 
   global.Views.about = {
     title: 'About',
-    subtitle: function () { return 'Version 14.1 · offline & local-first'; },
+    subtitle: function () { return 'Version 14.2 · offline & local-first'; },
 
     render: function () {
       var h = '';
@@ -30,7 +34,7 @@
         '<div><strong>Planner Pro</strong><small>Day · week · month · year planner</small></div></div>' +
         '<p class="small muted">A planner that behaves like a tool, not a website. It runs entirely in your browser, works with no internet connection, and stores every task and note on this device — no account, no analytics, no server.</p>' +
         '<div class="row-actions">' +
-        '<span class="pill">v14.1</span><span class="pill">Offline-first</span><span class="pill">Multi-profile</span><span class="pill">No tracking</span>' +
+        '<span class="pill">v14.2</span><span class="pill">Offline-first</span><span class="pill">Multi-profile</span><span class="pill">No tracking</span>' +
         '</div></div>';
 
       h += '<div class="grid g2">' +
@@ -52,6 +56,7 @@
         }).join('') + '</div></div>';
 
       h += '<div class="card"><div class="card-head"><h2>' + icon('note') + 'How your data works</h2></div>' +
+        '<p class="small muted">Quick add reads plain English: <code>call the clinic tomorrow 4pm #health</code> becomes a task on tomorrow at 16:00 with a tag.</p>' +
         '<p class="small muted">The command palette also understands dates: type <code>tomorrow</code>, <code>next friday</code> or <code>25 dec</code> to jump straight there.</p>' +
         '<p class="small muted">Deleted tasks, blocks and cleared lists wait in <strong>Recently deleted</strong> (Settings) for 30 days, and every delete offers an undo.</p>' +
         '<p class="small muted">Data is saved in this browser’s local storage under the key <code>planner_v14</code>. Nothing is uploaded. If you clear browsing data or use a different browser, the planner starts empty — so export a JSON backup from Settings now and then. Version 13 data is migrated automatically on first launch.</p>' +

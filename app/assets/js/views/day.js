@@ -29,6 +29,7 @@
         '<button class="btn btn-ghost btn-sm" data-act="print" title="Print this day">' + icon('print') + '<span class="btn-label">Print</span></button>' +
         '<button class="btn btn-ghost btn-sm" data-act="export-day" data-key="' + key + '">' + icon('download') + '<span class="btn-label">Markdown</span></button>' +
         '<button class="btn btn-ghost btn-sm" data-act="export-ics" data-days="' + key + '" title="Export to a calendar app">' + icon('clock') + '<span class="btn-label">Calendar</span></button>' +
+        '<button class="btn btn-ghost btn-sm" data-act="duplicate-day" data-key="' + key + '" title="Copy blocks and tasks from another day">' + icon('carry') + '<span class="btn-label">Copy day</span></button>' +
         '</div>';
 
       h += '<div class="card card-pad"><input class="intention" type="text" value="' + esc(d.intention || '') +

@@ -14,9 +14,9 @@ Day, week, month and year planning in one quiet screen. Multi-profile, PIN-locke
 </p>
 
 <p align="center">
-  <img alt="Version" src="https://img.shields.io/badge/version-14.1.0-8B5CF6">
+  <img alt="Version" src="https://img.shields.io/badge/version-14.2.0-8B5CF6">
   <img alt="License" src="https://img.shields.io/badge/license-PolyForm%20Noncommercial%201.0.0-22D3EE">
-  <img alt="Tests" src="https://img.shields.io/badge/e2e%20checks-65%20passing-34D399">
+  <img alt="Tests" src="https://img.shields.io/badge/e2e%20checks-73%20passing-34D399">
   <img alt="Offline" src="https://img.shields.io/badge/works%20offline-100%25-34D399">
   <img alt="No tracking" src="https://img.shields.io/badge/tracking-none-lightgrey">
   <img alt="Dependencies" src="https://img.shields.io/badge/runtime%20deps-zero-brightgreen">
@@ -73,6 +73,7 @@ and stores everything on your device.
 - **Archive** — finished years move out of the way automatically; restore, export or delete any of them.
 - **Carry over** — pull yesterday's unfinished tasks into today in one click.
 - **Undo and a 30-day trash** — every delete is reversible, twice over.
+- **Drag to reorder** — order is meaning in a plan; move a task or block by its handle.
 
 **Craft**
 - Multi-profile with a 4-digit PIN, PIN asked on launch (configurable), profiles never see each other's data.
@@ -84,6 +85,9 @@ and stores everything on your device.
 - Print stylesheet — printing a day or a week gives you clean paper output.
 - Markdown export for a single day or the whole planner; **ICS export** for a day or a week, so the plan lands in your calendar.
 - Inline editing — click a task, fix it, press Enter. No dialog.
+- **Keyboard-first list** — `j`/`k` to move, `x` to tick, `e` to edit, `Alt+↑/↓` to reorder.
+- **Quick add reads English** — "call the clinic tomorrow 4pm #health" fills the date, time and tag, with a live preview of what will be saved.
+- **Copy a day** — pull yesterday's blocks and tasks into today (or any date) in one dialog.
 - A backup nudge if you have not exported in 14 days, and a prompt when a new version is cached.
 
 **Data**
@@ -137,6 +141,9 @@ python3 -m http.server 8080 --directory app
 | Keys | Action |
 |---|---|
 | `Ctrl / ⌘ + K` | Command palette — search everything, run any command |
+| `J` / `K` | Move down / up the task list |
+| `X` / `E` | Tick / edit the focused task |
+| `Alt + ↑ / ↓` | Move the focused task up or down |
 | `N` | Quick add a task to any day |
 | `T` / `D` / `W` / `Y` / `A` | Today · Day · Week · Year · Archive |
 | `1` – `5` | Switch the main views |
@@ -171,14 +178,14 @@ date, so a plan belongs to *one* week instead of repeating every week.
 
 ```bash
 npm install          # dev tooling only: puppeteer-core + electron-builder
-npm test             # 65 end-to-end checks in headless Chromium
+npm test             # 73 end-to-end checks in headless Chromium
 npm run build:single # one portable planner-pro.html
 npm run build:web    # zip of the offline web build in dist/
 ```
 
 | Target | Command / workflow | Output |
 |---|---|---|
-| Web (offline) | `npm run build:web` | `dist/planner-pro-web.zip` |
+| Web (offline, minified) | `npm run build:web` | `dist/planner-pro-web.zip` (−27 % assets) |
 | Single HTML file | `npm run build:single` | `dist/planner-pro.html` |
 | Android APK | [`.github/workflows/android.yml`](.github/workflows/android.yml) | `app-debug.apk` via Capacitor (JDK 21) |
 | Windows / macOS / Linux | [`.github/workflows/desktop.yml`](.github/workflows/desktop.yml) | `.exe`, `.dmg`, `.AppImage`, `.deb` via Electron |

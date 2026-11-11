@@ -386,6 +386,138 @@ await step('a live region is present for screen readers', async () => {
 });
 
 /* ------------------------------------------------------------------ */
+console.log('\n— reordering, keyboard list & quick add —');
+await step('every task row has a drag handle', async () => {
+  await page.evaluate(() => { location.hash = '#/day/' + DateUtil.todayKey(); });
+  await sleep(300);
+  const rows = await count('.rows .row');
+  const handles = await count('.rows .row .drag');
+  ok(rows > 0, 'no rows to drag');
+  eq(handles, rows, 'each row needs a handle');
+  ok(await page.$eval('.rows .row', (el) => !!el.dataset.rowId), 'row id missing');
+});
+await step('dragging a task reorders the list', async () => {
+  await page.evaluate(() => {
+    const d = Store.day('2026-06-01', true);
+    d.todos = [
+      { id: 'a1', text: 'Alpha', done: false },
+      { id: 'a2', text: 'Beta', done: false },
+      { id: 'a3', text: 'Gamma', done: false }
+    ];
+    Store.saveNow();
+    location.hash = '#/day/2026-06-01';
+  });
+  await sleep(400);
+  eq((await page.$$eval('.rows .row-text', (e) => e.map((x) => x.textContent))).join(','), 'Alpha,Beta,Gamma');
+
+  const handles = await page.$$('.rows .row .drag');
+  const first = await handles[0].boundingBox();
+  const third = await handles[2].boundingBox();
+  await page.mouse.move(third.x + third.width / 2, third.y + third.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(third.x + third.width / 2, first.y + 2, { steps: 10 });
+  await page.mouse.up();
+  await sleep(400);
+
+  eq((await page.$$eval('.rows .row-text', (e) => e.map((x) => x.textContent))).join(','), 'Gamma,Alpha,Beta');
+  const stored = await page.evaluate(() => Store.day('2026-06-01', true).todos.map((t) => t.text).join(','));
+  eq(stored, 'Gamma,Alpha,Beta', 'order not persisted');
+});
+await step('J and K move the keyboard cursor', async () => {
+  await page.evaluate(() => document.activeElement.blur());
+  await page.keyboard.press('KeyJ');
+  await sleep(160);
+  ok(await page.$('.row.cursor'), 'no cursor after J');
+  const first = await page.$eval('.row.cursor .row-text', (el) => el.textContent);
+  await page.keyboard.press('KeyJ');
+  await sleep(160);
+  const second = await page.$eval('.row.cursor .row-text', (el) => el.textContent);
+  ok(first !== second, 'J did not move the cursor');
+  await page.keyboard.press('KeyK');
+  await sleep(160);
+  eq(await page.$eval('.row.cursor .row-text', (el) => el.textContent), first, 'K did not move back');
+});
+await step('X ticks the focused task', async () => {
+  const before = await count('.rows .row.done');
+  await page.keyboard.press('KeyX');
+  await sleep(260);
+  ok((await count('.rows .row.done')) !== before, 'X did not toggle');
+});
+await step('Alt+Arrow reorders the focused task', async () => {
+  const before = await page.evaluate(() => Store.day('2026-06-01', true).todos.map((t) => t.text).join(','));
+  await page.keyboard.down('Alt');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.up('Alt');
+  await sleep(320);
+  const after = await page.evaluate(() => Store.day('2026-06-01', true).todos.map((t) => t.text).join(','));
+  ok(before !== after, 'Alt+Arrow did not reorder: ' + before + ' → ' + after);
+});
+await step('quick add parses date, time and tags', async () => {
+  const parsed = await page.evaluate(() => PlannerDebug.parseQuickAdd('Call the clinic tomorrow 4pm #health'));
+  eq(parsed.text, 'Call the clinic');
+  eq(parsed.time, '16:00');
+  eq(parsed.tags.join(','), 'health');
+  const t = await page.evaluate(() => DateUtil.addDays(DateUtil.todayKey(), 1));
+  eq(parsed.dateKey, t, 'date not parsed');
+
+  const bare = await page.evaluate(() => PlannerDebug.parseQuickAdd('Buy stamps'));
+  eq(bare.text, 'Buy stamps');
+  eq(bare.time, null);
+  eq(bare.dateKey, null);
+});
+await step('quick add modal saves what it previews', async () => {
+  await page.evaluate(() => document.activeElement.blur());
+  await page.keyboard.press('KeyN');
+  await sel('#qaText');
+  await page.type('#qaText', 'Buy milk tomorrow 9am #errand');
+  await sleep(250);
+  const preview = await textOf('#qaPreview');
+  ok(preview.includes('09:00'), 'preview missing time: ' + preview);
+  ok(preview.includes('#errand'), 'preview missing tag: ' + preview);
+
+  const btns = await page.$$('#modalActions .btn');
+  await btns[btns.length - 1].click();
+  await sleep(350);
+
+  const saved = await page.evaluate(() => {
+    const k = DateUtil.addDays(DateUtil.todayKey(), 1);
+    const d = Store.peekDay(k);
+    return d ? d.todos.filter((t) => t.text === 'Buy milk') : [];
+  });
+  eq(saved.length, 1, 'task not saved to tomorrow');
+  eq(saved[0].at, '09:00', 'time not stored');
+  eq((saved[0].tags || []).join(','), 'errand', 'tag not stored');
+});
+await step('copies blocks and tasks from another day', async () => {
+  await page.evaluate(() => {
+    const src = Store.day('2026-06-02', true);
+    src.blocks = [{ id: 'x1', start: '09:00', end: '', text: 'Standup' }];
+    src.todos = [{ id: 'x2', text: 'Email triage', done: true }];
+    Store.saveNow();
+    location.hash = '#/day/2026-06-03';
+  });
+  await sleep(350);
+  await clickAct('duplicate-day');
+  await sel('#dupDate');
+  await page.$eval('#dupDate', (el) => { el.value = '2026-06-02'; });
+  const btns = await page.$$('#modalActions .btn');
+  await btns[btns.length - 1].click();
+  await sleep(400);
+
+  const copied = await page.evaluate(() => {
+    const d = Store.day('2026-06-03', true);
+    return {
+      blocks: d.blocks.map((b) => b.text),
+      todos: d.todos.map((t) => ({ text: t.text, done: t.done }))
+    };
+  });
+  ok(copied.blocks.includes('Standup'), 'block not copied');
+  eq(copied.todos.length, 1, 'task not copied');
+  eq(copied.todos[0].text, 'Email triage');
+  eq(copied.todos[0].done, false, 'copied tasks must start unchecked');
+});
+
+/* ------------------------------------------------------------------ */
 console.log('\n— week view —');
 await step('renders 7 day columns', async () => {
   await nav('week');

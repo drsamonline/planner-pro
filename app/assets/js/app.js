@@ -254,6 +254,7 @@
     if (!view) { id = 'today'; view = global.Views.today; }
     currentId = id;
     currentParam = param || '';
+    cursor = -1;
 
     var host = $('view');
     try {
@@ -270,6 +271,8 @@
     document.title = (view.title || 'Planner') + ' · Planner Pro';
     setActiveNav(id);
     buildNavBadge();
+    // the floating add button would sit on top of a view's own composer
+    $('app').classList.toggle('has-composer', ['today', 'day', 'week', 'year'].indexOf(id) >= 0);
     if (isRoute) window.scrollTo({ top: 0, behavior: 'instant' in document.documentElement.style ? 'instant' : 'auto' });
     if (id === 'search') { var si = $('searchInput'); if (si) si.focus(); }
   }
@@ -284,7 +287,9 @@
   }
 
   function refresh(focus) {
+    var keepCursor = cursor;
     renderView(currentId, currentParam, false);
+    if (keepCursor >= 0) setCursor(keepCursor);
     if (focus) {
       var sel = 'form[data-form="add-todo"][data-scope="' + focus.scope + '"][data-key="' + focus.key + '"] input';
       var el = document.querySelector(sel);
@@ -384,6 +389,106 @@
     announce('Deleted ' + removed.text);
     UI.toast('Deleted “' + short(removed.text) + '”', { action: function () { undoEntry(entry); } });
   }
+
+  /* ---------------- drag to reorder ----------------
+     Pointer events, no library. The row is moved in the DOM for live feedback and
+     the store is rebuilt from the final DOM order on drop. */
+
+  var dragState = null;
+
+  function beginDrag(e, handle) {
+    var row = handle.closest('.row');
+    if (!row || !row.dataset.rowId) return;
+    var list = listFor(handle.dataset.scope, handle.dataset.key);
+    var from = -1;
+    list.forEach(function (t, i) { if (t.id === handle.dataset.id) from = i; });
+    if (from < 0) return;
+
+    dragState = {
+      scope: handle.dataset.scope, key: handle.dataset.key, id: handle.dataset.id,
+      row: row, parent: row.parentNode, from: from
+    };
+    row.classList.add('dragging');
+    document.addEventListener('pointermove', onDragMove);
+    document.addEventListener('pointerup', endDrag, { once: true });
+    document.addEventListener('pointercancel', endDrag, { once: true });
+    if (e.preventDefault) e.preventDefault();
+  }
+
+  function onDragMove(e) {
+    if (!dragState) return;
+    var rows = Array.prototype.slice.call(dragState.parent.children);
+    var target = null;
+    for (var i = 0; i < rows.length; i++) {
+      var box = rows[i].getBoundingClientRect();
+      if (e.clientY < box.top + box.height / 2) { target = rows[i]; break; }
+    }
+    rows.forEach(function (r) { r.classList.remove('drop-target'); });
+    if (!target) {
+      dragState.parent.appendChild(dragState.row);
+    } else if (target !== dragState.row) {
+      dragState.parent.insertBefore(dragState.row, target);
+      target.classList.add('drop-target');
+    }
+  }
+
+  function endDrag() {
+    document.removeEventListener('pointermove', onDragMove);
+    if (!dragState) return;
+    var st = dragState;
+    dragState = null;
+    st.row.classList.remove('dragging');
+    Array.prototype.forEach.call(st.parent.children, function (r) { r.classList.remove('drop-target'); });
+
+    var order = Array.prototype.map.call(st.parent.children, function (r) { return r.dataset.rowId; });
+    var list = listFor(st.scope, st.key);
+    var byId = {};
+    list.forEach(function (t) { byId[t.id] = t; });
+    var reordered = order.map(function (id) { return byId[id]; }).filter(Boolean);
+    list.forEach(function (t) { if (reordered.indexOf(t) < 0) reordered.push(t); });
+
+    var changed = reordered.some(function (t, i) { return !list[i] || t.id !== list[i].id; });
+    if (changed) {
+      list.length = 0;
+      reordered.forEach(function (t) { list.push(t); });
+      Store.saveNow();
+      announce('Reordered');
+    }
+    refresh();
+  }
+
+  function moveRow(rowEl, delta) {
+    var btn = rowEl && rowEl.querySelector('[data-act="todo-toggle"]');
+    if (!btn) return;
+    var list = listFor(btn.dataset.scope, btn.dataset.key);
+    var index = -1;
+    list.forEach(function (t, i) { if (t.id === btn.dataset.id) index = i; });
+    var next = index + delta;
+    if (index < 0 || next < 0 || next >= list.length) return;
+    var item = list.splice(index, 1)[0];
+    list.splice(next, 0, item);
+    Store.saveNow();
+    cursor = next;
+    refresh();
+  }
+
+  /* ---------------- keyboard cursor over the task list ---------------- */
+
+  var cursor = -1;
+
+  function currentRows() {
+    return Array.prototype.slice.call(document.querySelectorAll('#view .rows .row'));
+  }
+
+  function setCursor(i) {
+    var rows = currentRows();
+    if (!rows.length) { cursor = -1; return; }
+    cursor = Math.max(0, Math.min(i, rows.length - 1));
+    rows.forEach(function (r, j) { r.classList.toggle('cursor', j === cursor); });
+    if (rows[cursor] && rows[cursor].scrollIntoView) rows[cursor].scrollIntoView({ block: 'nearest' });
+  }
+
+  function cursorRow() { return currentRows()[cursor] || null; }
 
   function actTodoEdit(el) {
     global.Parts.editingId = el.dataset.id;
@@ -759,36 +864,188 @@
     }
   }
 
+  /**
+   * "Call the clinic tomorrow 4pm #health" →
+   *   { text: 'Call the clinic', dateKey, time: '16:00', tags: ['health'], prio: false }
+   */
+  function parseQuickAdd(raw) {
+    var text = String(raw || '');
+    var tags = [];
+    var prio = false;
+
+    text = text.replace(/#([\w-]+)/g, function (m, tag) { tags.push(tag); return ' '; });
+    if (/!!/.test(text)) prio = true;
+    text = text.replace(/!!/g, ' ');
+
+    var time = null;
+    var withMeridiem = text.match(/\b(\d{1,2})(?::(\d{2}))?\s*(am|pm)\b/i);
+    if (withMeridiem) {
+      var hour = Number(withMeridiem[1]) % 12;
+      if (/pm/i.test(withMeridiem[3])) hour += 12;
+      time = D.pad(hour) + ':' + (withMeridiem[2] || '00');
+      text = text.replace(withMeridiem[0], ' ');
+    } else {
+      var clock = text.match(/\b([01]?\d|2[0-3]):([0-5]\d)\b/);
+      if (clock) {
+        time = D.pad(Number(clock[1])) + ':' + clock[2];
+        text = text.replace(clock[0], ' ');
+      }
+    }
+
+    var dateKey = null;
+    var lower = text.toLowerCase();
+    var weekday = lower.match(/\b(next\s+)?(sunday|monday|tuesday|wednesday|thursday|friday|saturday|sun|mon|tue|wed|thu|fri|sat)\b/);
+    if (weekday) {
+      var parsed = parseDateQuery(weekday[0].trim());
+      if (parsed) { dateKey = parsed; text = text.slice(0, weekday.index) + text.slice(weekday.index + weekday[0].length); }
+    }
+    if (!dateKey) {
+      var words = ['today', 'tomorrow', 'yesterday'];
+      for (var i = 0; i < words.length; i++) {
+        var at = text.toLowerCase().indexOf(words[i]);
+        if (at >= 0) {
+          dateKey = parseDateQuery(words[i]);
+          text = text.slice(0, at) + text.slice(at + words[i].length);
+          break;
+        }
+      }
+    }
+    if (!dateKey) {
+      var dayMonth = text.toLowerCase().match(/\b(\d{1,2})\s+(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\b/) ||
+        text.toLowerCase().match(/\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\s+(\d{1,2})\b/);
+      if (dayMonth) {
+        var parsed2 = parseDateQuery(dayMonth[0]);
+        if (parsed2) { dateKey = parsed2; text = text.slice(0, dayMonth.index) + text.slice(dayMonth.index + dayMonth[0].length); }
+      }
+    }
+
+    return {
+      text: text.replace(/\s+/g, ' ').trim(),
+      dateKey: dateKey, time: time, tags: tags, prio: prio
+    };
+  }
+
+  function quickAddPreview(raw) {
+    var box = $('qaPreview');
+    if (!box) return;
+    var parsed = parseQuickAdd(raw);
+    if (!parsed.text && !parsed.dateKey && !parsed.time) {
+      box.className = 'tiny dim';
+      box.textContent = 'Type a date, a time or #tag — they are picked out automatically.';
+      return;
+    }
+    var bits = [];
+    if (parsed.dateKey) bits.push('<span class="pill">' + esc(D.relative(parsed.dateKey) || D.prettyDay(parsed.dateKey)) + '</span>');
+    if (parsed.time) bits.push('<span class="pill pill-time">' + esc(parsed.time) + '</span>');
+    parsed.tags.forEach(function (t) { bits.push('<span class="pill pill-tag">#' + esc(t) + '</span>'); });
+    if (parsed.prio) bits.push('<span class="pill pill-warn">priority</span>');
+    box.className = 'tiny';
+    box.innerHTML = '<span class="dim">Saves as:</span> ' + esc(parsed.text || '—') +
+      (bits.length ? ' ' + bits.join(' ') : '');
+  }
+
   function quickAddModal() {
     var tk = D.todayKey();
     UI.openModal({
       title: 'Quick add',
       body: '<div class="field"><label for="qaText">Task</label>' +
-        '<input type="text" id="qaText" placeholder="What needs doing?" autocomplete="off"></div>' +
-        '<div class="field" style="margin-top:10px"><label for="qaDate">Day</label>' +
-        '<input type="date" id="qaDate" value="' + tk + '"></div>' +
+        '<input type="text" id="qaText" placeholder="Call the clinic tomorrow 4pm #health" autocomplete="off"></div>' +
+        '<div id="qaPreview" class="tiny dim" style="margin-top:8px">' +
+        'Type a date, a time or #tag — they are picked out automatically.</div>' +
+        '<div class="field" style="margin-top:12px"><label for="qaDate">Day (overrides the text)</label>' +
+        '<input type="date" id="qaDate" value=""></div>' +
         '<label style="display:flex;gap:9px;align-items:center;margin-top:10px;cursor:pointer">' +
         '<input type="checkbox" id="qaPrio"><span class="small">Mark as priority</span></label>',
       actions: [
         { label: 'Cancel', value: null, cls: 'btn-ghost' },
         {
           label: 'Add task', value: 'add', cls: 'btn', onClick: function () {
-            var text = ($('qaText').value || '').trim();
-            if (!text) { UI.toast('Type a task first'); return false; }
-            var key = $('qaDate').value || tk;
-            Store.day(key, true).todos.push({ id: Store.uid(), text: text, done: false, prio: $('qaPrio').checked });
+            var raw = ($('qaText').value || '').trim();
+            if (!raw) { UI.toast('Type a task first'); return false; }
+            var parsed = parseQuickAdd(raw);
+            var key = ($('qaDate').value || parsed.dateKey || tk);
+            var todo = {
+              id: Store.uid(),
+              text: parsed.text || raw,
+              done: false,
+              prio: $('qaPrio').checked || parsed.prio
+            };
+            if (parsed.time) todo.at = parsed.time;
+            if (parsed.tags.length) todo.tags = parsed.tags;
+            Store.day(key, true).todos.push(todo);
             Store.saveNow();
-            UI.toast('Added to ' + D.prettyDay(key));
+            var bits = [D.relative(key) || D.prettyDay(key)];
+            if (parsed.time) bits.push('at ' + parsed.time);
+            if (parsed.tags.length) bits.push(parsed.tags.map(function (t) { return '#' + t; }).join(' '));
+            UI.toast('Added to ' + bits.join(' · '));
             refresh();
           }
         }
       ],
       onMount: function (body) {
         var input = body.querySelector('input');
+        input.addEventListener('input', function () { quickAddPreview(input.value); });
         input.addEventListener('keydown', function (e) {
           if (e.key === 'Enter') { e.preventDefault(); var b = document.querySelectorAll('#modalActions .btn'); b[b.length - 1].click(); }
         });
       }
+    });
+  }
+
+  /* ---------------- copy another day into this one ---------------- */
+
+  function actDuplicateDay(targetKey) {
+    var suggested = D.addDays(targetKey, -1);
+    UI.openModal({
+      title: 'Copy a day',
+      body: '<div class="field"><label for="dupDate">Copy from</label>' +
+        '<input type="date" id="dupDate" value="' + suggested + '"></div>' +
+        '<label style="display:flex;gap:9px;align-items:center;margin-top:12px;cursor:pointer">' +
+        '<input type="checkbox" id="dupBlocks" checked><span class="small">Time blocks</span></label>' +
+        '<label style="display:flex;gap:9px;align-items:center;margin-top:6px;cursor:pointer">' +
+        '<input type="checkbox" id="dupTasks" checked><span class="small">Tasks (added unchecked)</span></label>' +
+        '<label style="display:flex;gap:9px;align-items:center;margin-top:6px;cursor:pointer">' +
+        '<input type="checkbox" id="dupIntention"><span class="small">Intention line</span></label>' +
+        '<p class="tiny dim" style="margin-top:10px">Only into ' + esc(D.prettyDay(targetKey)) + '. Existing items are kept.</p>',
+      actions: [
+        { label: 'Cancel', value: null, cls: 'btn-ghost' },
+        {
+          label: 'Copy', value: 'copy', cls: 'btn', onClick: function () {
+            var from = $('dupDate').value;
+            if (!D.isKey(from)) { UI.toast('Pick a date to copy from'); return false; }
+            if (from === targetKey) { UI.toast('Pick a different day'); return false; }
+            var src = Store.peekDay(from);
+            if (!src) { UI.toast('That day is empty'); return false; }
+
+            var dst = Store.day(targetKey, true);
+            var existing = {};
+            dst.todos.forEach(function (t) { existing[t.text.toLowerCase()] = 1; });
+            var added = 0;
+
+            if ($('dupBlocks').checked) {
+              (src.blocks || []).forEach(function (b) {
+                dst.blocks.push({ id: Store.uid(), start: b.start, end: b.end || '', text: b.text });
+              });
+            }
+            if ($('dupTasks').checked) {
+              (src.todos || []).forEach(function (t) {
+                if (existing[t.text.toLowerCase()]) return;
+                dst.todos.push({
+                  id: Store.uid(), text: t.text, done: false, prio: !!t.prio,
+                  at: t.at || '', tags: (t.tags || []).slice()
+                });
+                added++;
+              });
+            }
+            if ($('dupIntention').checked && src.intention && !dst.intention) {
+              dst.intention = src.intention;
+            }
+            Store.saveNow();
+            refresh();
+            UI.toast('Copied from ' + D.prettyDay(from));
+          }
+        }
+      ]
     });
   }
 
@@ -968,6 +1225,12 @@
     $('createUserBtn').addEventListener('click', createProfile);
     $('newUserPin').addEventListener('keydown', function (e) { if (e.key === 'Enter') createProfile(); });
 
+    /* ---- drag handle ---- */
+    document.addEventListener('pointerdown', function (e) {
+      var handle = e.target.closest ? e.target.closest('[data-act="drag-start"]') : null;
+      if (handle) beginDrag(e, handle);
+    });
+
     /* ---- clicks ---- */
     document.addEventListener('click', function (e) {
       var el = e.target.closest('[data-act]');
@@ -1005,6 +1268,7 @@
         case 'trash-restore': actTrashRestore(ds.id); break;
         case 'trash-delete': actTrashDelete(ds.id); break;
         case 'trash-empty': actTrashEmpty(); break;
+        case 'duplicate-day': actDuplicateDay(ds.key); break;
         case 'change-pin': actChangePin(); break;
         case 'delete-profile': actDeleteProfile(); break;
         case 'install': actInstall(); break;
@@ -1137,6 +1401,25 @@
       if (!$('app').hidden && !typing) {
         var k = e.key.toLowerCase();
         if (k === 'n') { e.preventDefault(); quickAddModal(); return; }
+
+        // task-list cursor
+        if (k === 'j') { e.preventDefault(); setCursor(cursor + 1); return; }
+        if (k === 'k') { e.preventDefault(); setCursor(cursor < 0 ? 0 : cursor - 1); return; }
+        if (k === 'x') {
+          var rowToggle = cursorRow();
+          if (rowToggle) { e.preventDefault(); rowToggle.querySelector('.check').click(); }
+          return;
+        }
+        if (k === 'e') {
+          var rowEdit = cursorRow();
+          if (rowEdit) { e.preventDefault(); var txt = rowEdit.querySelector('.row-text'); if (txt) txt.click(); }
+          return;
+        }
+        if (e.altKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
+          var rowMove = cursorRow();
+          if (rowMove) { e.preventDefault(); moveRow(rowMove, e.key === 'ArrowUp' ? -1 : 1); }
+          return;
+        }
         if (k === 't') { actGo('#/today'); return; }
         if (k === 'd') { actGo('#/day/' + D.todayKey()); return; }
         if (k === 'w') { actGo('#/week/' + D.weekStartKey(D.todayKey(), Store.user().weekStart)); return; }
@@ -1198,7 +1481,10 @@
   }
 
   /* Exposed for the end-to-end suite: pure helpers with no side effects. */
-  global.PlannerDebug = { icsFor: icsFor, parseDateQuery: parseDateQuery, icsEsc: icsEsc };
+  global.PlannerDebug = {
+    icsFor: icsFor, parseDateQuery: parseDateQuery, icsEsc: icsEsc,
+    parseQuickAdd: parseQuickAdd, moveRow: moveRow
+  };
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
   else boot();

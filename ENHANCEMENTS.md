@@ -124,9 +124,11 @@ Effort is honest wall-clock time for one developer who already knows the code:
 
 ### Tier A — high value, small weight
 
-> **Shipped in 14.1.0:** A1 (undo), A2 (trash), A3 (backup reminder), A4 (PWA update
+> **Shipped:** 14.1.0 — A1 (undo), A2 (trash), A3 (backup reminder), A4 (PWA update
 > prompt), A5 (inline editing), A7 (ICS export), A9 (palette date jump), A12
-> (accessibility pass). Still open in this tier: A6, A8, A10, A11.
+> (accessibility pass). 14.2.0 — A6 (drag to reorder), A8 (natural-language quick
+> add), A10 (copy a day), A11 (keyboard list) and the minified build. **Tier A is
+> complete.**
 
 | # | Enhancement | Why it matters | Effort | Weight |
 |---|---|---|---|---|
@@ -135,12 +137,12 @@ Effort is honest wall-clock time for one developer who already knows the code:
 | A3 | ✅ **shipped in 14.1** — **Backup reminder** — nudge if no export in 14 days, dismissible | Local-first apps die from forgotten backups | S | ~1 KB |
 | A4 | ✅ **shipped in 14.1** — **PWA update prompt** — "A new version is ready · Reload" | Without it, users stay on an old cached build for weeks | S | ~1 KB |
 | A5 | ✅ **shipped in 14.1** — **Inline task editing** (click text → edit in place, Enter to save) instead of a modal | Removes a whole round-trip for the most common action | S | ~2 KB |
-| A6 | **Drag to reorder** tasks and blocks (pointer events, no library) | Order is meaning in a plan; currently fixed by creation order | M | ~4 KB |
+| A6 | ✅ **shipped in 14.2** — **Drag to reorder** tasks and blocks (pointer events, no library) | Order is meaning in a plan; currently fixed by creation order | M | ~4 KB |
 | A7 | ✅ **shipped in 14.1** — **ICS export** for a day or a week | Puts the plan into Google/Apple Calendar without any integration | S–M | ~3 KB |
-| A8 | **Natural-language quick add** — "call clinic tomorrow 4pm #health" fills date, time and tag | One keystroke instead of four fields | M | ~5 KB |
+| A8 | ✅ **shipped in 14.2** — **Natural-language quick add** — "call clinic tomorrow 4pm #health" fills date, time and tag | One keystroke instead of four fields | M | ~5 KB |
 | A9 | ✅ **shipped in 14.1** — **Quick date jump** in the palette — type "next friday", "24 dec" | Fastest way to reach a distant day | S | ~2 KB |
-| A10 | **Duplicate day / copy yesterday's blocks** | Most days are variations of a routine | S | ~2 KB |
-| A11 | **Keyboard-navigable task list** (`j/k`, `x` to tick, `e` to edit) | Makes the app genuinely fast for heavy users | M | ~3 KB |
+| A10 | ✅ **shipped in 14.2** — **Duplicate day / copy yesterday's blocks** | Most days are variations of a routine | S | ~2 KB |
+| A11 | ✅ **shipped in 14.2** — **Keyboard-navigable task list** (`j/k`, `x` to tick, `e` to edit) | Makes the app genuinely fast for heavy users | M | ~3 KB |
 | A12 | ✅ **shipped in 14.1** — **Skip link + `aria-live` on counts** | Screen-reader correctness; small effort | S | ~1 KB |
 
 ### Tier B — valuable, medium weight
@@ -198,7 +200,7 @@ Effort is honest wall-clock time for one developer who already knows the code:
 | **Partial DOM updates for toggles** — flip one row's class instead of re-rendering the view | Noticeably snappier on 100+ item lists; also keeps scroll and focus | M |
 | **`content-visibility: auto`** on month cards and week columns | Skips layout/paint for offscreen cards; cheap win on the year view | S |
 | **Cache `Intl.DateTimeFormat` instances** instead of `toLocaleDateString()` per render | Removes a surprising amount of work in long loops | S |
-| **Minify CSS/JS in the build** (esbuild, one pass) | ~35–40 % smaller shell, faster first paint | S |
+| ~~**Minify CSS/JS in the build** (esbuild, one pass)~~ ✅ done in 14.2 — assets 167 KB → 123 KB (−27 %) | Smaller shell, faster first paint | S |
 | **`requestIdleCallback` for saves** | Saves stop competing with typing on slow phones | S |
 | **IndexedDB + compression** (C1, C2) | Removes the 5 MB ceiling and the stringify pause at large sizes | L |
 | **Preload the next/previous day's view** on hover/idle | Instant day stepping | S |
@@ -240,8 +242,10 @@ update prompt, inline editing, ICS export, palette date jump, accessibility pass
 Still open from this batch: drag-to-reorder (A6), natural-language quick add (A8),
 duplicate day (A10), keyboard-navigable list (A11), minified build.
 
-**v14.2 — "routines"** (Tier B, first half): recurring tasks, templates, duplicate
-day, tags, estimated minutes, weekly review mode.
+**v14.2 — "routines"** — ✅ shipped the interaction half (drag reorder, keyboard
+list, natural-language quick add, copy day, minified build). Still open: recurring
+tasks (B1), templates (B2), a real tag filter (B3), estimated minutes (B5), weekly
+review mode (B9).
 
 **v15 — "insight"**: year heatmap, stats view, encrypted backups, Markdown vault
 export, IndexedDB + compression, i18n groundwork.
