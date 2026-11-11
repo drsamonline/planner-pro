@@ -136,6 +136,7 @@ Effort is honest wall-clock time for one developer who already knows the code:
 > **14.8.0 — B13 (focus timer), B14 (Markdown vault), B17 (swipe).**
 > **14.9.0 — B4 (subtasks), B15 (CSV import), B19 (panic blur), B20 (data health).**
 > **14.10.0 — B11 (mini calendar), B16 (share target). Tier B complete: 20/20.**
+> **15.0.0 — C1 (IndexedDB) and C2 (compression).**
 >
 > **Scope decision:** i18n (C3) and everything that touches a network — user-owned
 > sync (C4), a sync server (C7) — are dropped. The app has no networking code and
@@ -185,8 +186,8 @@ Effort is honest wall-clock time for one developer who already knows the code:
 
 | # | Enhancement | Why it matters | Effort | Weight |
 |---|---|---|---|---|
-| C1 | **IndexedDB storage** behind the same API | localStorage caps around 5 MB; IndexedDB removes the ceiling and the `JSON.stringify` cost | L | ~8 KB |
-| C2 | **Compression** (LZ-string or `CompressionStream`) for stored JSON | 3–5× more history in the same space | M | ~2 KB |
+| C1 | ✅ **shipped in 15.0** — **IndexedDB storage** behind the same API | localStorage caps around 5 MB; IndexedDB removes the ceiling and the `JSON.stringify` cost | L | ~8 KB |
+| C2 | ✅ **shipped in 15.0** — **Compression** (LZ-string or `CompressionStream`) for stored JSON | 3–5× more history in the same space | M | ~2 KB |
 | C3 | **i18n** — string table + `Intl` formatting; Hindi, Marathi, Gujarati first | Most of this app's likely users don't plan in English | L | ~10 KB |
 | C4 | **Optional sync** through a file the user owns (File System Access API, or a chosen folder) | Multi-device without a server or an account | L | ~10 KB |
 | C5 | **Day attachments** — images/PDFs per day in IndexedDB | Appointment slips, prescriptions, sketches | L | ~12 KB |

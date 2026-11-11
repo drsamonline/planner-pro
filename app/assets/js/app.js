@@ -31,19 +31,22 @@
      boot
      ====================================================================== */
   function boot() {
-    Store.load();
-    pendingShare = readShare();
-    UI.initModal();
-    Store.on(onStoreEvent);
-    bindEvents();
-    applyTheme();
-    var active = Store.state().activeUser;
-    var activeUser = active ? Store.state().users[active] : null;
-    if (active && activeUser && activeUser.settings.requirePin === false) showApp();
-    else if (active) { showLock(); pickUser(active); }
-    else showLock();
-    registerSW();
-    $('railSub').textContent = 'v' + Store.VERSION;
+    return Store.load().then(function () {
+      pendingShare = readShare();
+      UI.initModal();
+      Store.on(onStoreEvent);
+      bindEvents();
+      applyTheme();
+
+      var active = Store.state().activeUser;
+      var activeUser = active ? Store.state().users[active] : null;
+      if (active && activeUser && activeUser.settings.requirePin === false) showApp();
+      else if (active) { showLock(); pickUser(active); }
+      else showLock();
+
+      registerSW();
+      $('railSub').textContent = 'v' + Store.VERSION;
+    });
   }
 
   function onStoreEvent(type) {
@@ -2513,7 +2516,7 @@
   function registerSW() {
     if (!('serviceWorker' in navigator)) return;
     if (location.protocol !== 'http:' && location.protocol !== 'https:') return;
-    window.addEventListener('load', function () {
+    function register() {
       navigator.serviceWorker.register('sw.js').then(function (reg) {
         reg.addEventListener('updatefound', function () {
           var next = reg.installing;
@@ -2534,7 +2537,11 @@
         // look for a new build once the app has settled
         setTimeout(function () { reg.update().catch(function () {}); }, 5000);
       }).catch(function () { /* offline still works from the file system */ });
-    });
+    }
+
+    // boot is async, so the load event may already have fired by now
+    if (document.readyState === 'complete') register();
+    else window.addEventListener('load', register);
   }
 
   /* Exposed for the end-to-end suite: pure helpers with no side effects. */
@@ -2546,6 +2553,14 @@
     focusState: function () { return focus; }
   };
 
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
-  else boot();
+  function start() {
+    boot().catch(function (err) {
+      // never leave a blank screen: say what happened
+      var boot = document.getElementById('boot');
+      if (boot) boot.textContent = 'Could not open the planner: ' + (err && err.message ? err.message : err);
+    });
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
+  else start();
 })(window);

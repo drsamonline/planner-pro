@@ -80,6 +80,9 @@
         '<div class="card"><div class="card-head"><h2>' + icon('download') + 'Backup &amp; restore</h2>' +
         '<span class="pill num">' + UI.fmtBytes(usage.bytes) + '</span></div>' +
         '<p class="tiny dim">Everything lives in this browser. Clearing site data deletes it — export a backup regularly, or keep the JSON in your cloud drive.</p>' +
+        '<p class="tiny dim">Stored in ' + (usage.backend === 'idb'
+          ? 'IndexedDB' + (usage.compressed ? ' (gzip)' : '')
+          : 'localStorage (IndexedDB unavailable)') + ' · ' + UI.fmtBytes(usage.bytes) + '</p>' +
         '<button class="btn" data-act="export-db">' + icon('download') + 'Export database (.json)</button>' +
         '<button class="btn btn-ghost" data-act="import-db">' + icon('upload') + 'Import database (.json)</button>' +
         '<button class="btn btn-ghost" data-act="import-csv">' + icon('upload') + 'Import tasks from CSV</button>' +

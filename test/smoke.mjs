@@ -1580,6 +1580,81 @@ await step('desktop: rail is visible', async () => {
 });
 
 /* ------------------------------------------------------------------ */
+console.log('\n— storage backend —');
+await step('the document lives in IndexedDB, not localStorage', async () => {
+  const res = await page.evaluate(() => new Promise((resolve) => {
+    const req = indexedDB.open('planner-pro', 1);
+    req.onerror = () => resolve({ error: true });
+    req.onsuccess = () => {
+      const db = req.result;
+      const get = db.transaction('docs', 'readonly').objectStore('docs').get('planner_v14');
+      get.onsuccess = () => {
+        const rec = get.result;
+        resolve({
+          stored: !!rec,
+          gzip: !!(rec && rec.gz),
+          storedBytes: rec && rec.buf ? rec.buf.byteLength : null,
+          rawBytes: new Blob([JSON.stringify(Store.state())]).size,
+          lsRaw: localStorage.getItem('planner_v14'),
+          backend: Store.usage().backend
+        });
+      };
+      get.onerror = () => resolve({ error: true });
+    };
+  }));
+  eq(res.backend, 'idb', 'backend should be IndexedDB');
+  ok(res.stored, 'no document in IndexedDB');
+  eq(res.gzip, true, 'the record should be gzipped');
+  eq(res.lsRaw, null, 'the localStorage copy should be gone after migration');
+  ok(res.storedBytes < res.rawBytes, 'compressed size should be smaller (' + res.storedBytes + ' vs ' + res.rawBytes + ')');
+});
+await step('a reload reads the document back from IndexedDB', async () => {
+  const before = await page.evaluate(() => {
+    const u = Store.user();
+    return { name: u.name, days: Object.keys(u.days).length };
+  });
+  await page.reload({ waitUntil: 'networkidle2' });
+  await sleep(500);
+  if (await visible('#lockScreen')) {
+    if (!(await visible('#pinForm'))) { await page.click('.user-chip'); await sleep(250); }
+    await page.type('#pinInput', '4321');
+    await page.click('#pinForm button[type="submit"]');
+    await sleep(700);
+  }
+  const after = await page.evaluate(() => {
+    const u = Store.user();
+    return { name: u.name, days: Object.keys(u.days).length, backend: Store.usage().backend };
+  });
+  eq(after.backend, 'idb', 'backend after reload');
+  eq(after.name, before.name, 'profile name lost across reload');
+  eq(after.days, before.days, 'days lost across reload');
+});
+await step('without IndexedDB the app falls back to localStorage', async () => {
+  const fb = await browser.newPage();
+  await fb.evaluateOnNewDocument(() => {
+    Object.defineProperty(window, 'indexedDB', { get: () => undefined });
+  });
+  await fb.goto(`http://127.0.0.1:${PORT}/index.html`, { waitUntil: 'networkidle2' });
+  await sleep(300);
+  const before = await fb.evaluate(() => Store.usage().backend);
+  eq(before, 'ls', 'should have fallen back to localStorage');
+
+  await fb.type('#newUserName', 'Fallback');
+  await fb.type('#newUserPin', '1111');
+  await fb.click('#createUserBtn');
+  await sleep(600);
+  const res = await fb.evaluate(() => ({
+    app: !document.getElementById('app').hidden,
+    ls: !!localStorage.getItem('planner_v14')
+  }));
+  eq(res.app, true, 'app did not open without IndexedDB');
+  eq(res.ls, true, 'nothing written to localStorage in fallback mode');
+
+  await fb.evaluate(() => localStorage.removeItem('planner_v14'));
+  await fb.close();
+});
+
+/* ------------------------------------------------------------------ */
 console.log('\n— service worker —');
 await step('registers the service worker', async () => {
   const has = await page.evaluate(async () => {

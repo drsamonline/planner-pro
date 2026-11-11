@@ -4,6 +4,24 @@ All notable changes to Planner Pro. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [semantic versioning](https://semver.org/).
 
+## [15.0.0] — 2026-11-11
+
+The document moves out of localStorage. A 5 MB quota shared with every other
+site on the domain was the one wall left; IndexedDB plus gzip removes it.
+**Existing data migrates automatically on first load.**
+
+### Changed
+
+- **Storage backend.** The document is written to IndexedDB (`planner-pro` / `docs`) as a gzipped record when the browser has `CompressionStream`, and as plain JSON when it does not. `localStorage` is now only the fallback for `file://`, private windows and browsers that block IndexedDB.
+- **Migration.** On first load the existing `planner_v14` key is read, normalised, written to IndexedDB, and removed from localStorage — but only after the write succeeds. A corrupt document is still copied aside rather than destroyed.
+- **`Store.load()` is asynchronous.** `boot()` awaits it, and the service-worker registration now checks `document.readyState` before waiting for `load`, since that event can fire before an async boot finishes.
+- **Writes are asynchronous but still debounced and fire-and-forget**, so no caller had to change. A failed write falls back to localStorage for that snapshot instead of losing the edit.
+- Settings shows which backend is in use and how much is stored.
+
+### Verified
+
+- The end-to-end suite grew from 111 to **114 checks**: the document being in IndexedDB and gzipped with the localStorage copy gone, the compressed record being smaller than the raw JSON, a reload reading it back intact, and a browser with `indexedDB` removed falling back to localStorage and still opening.
+
 ## [14.10.0] — 2026-11-11
 
 Two ways in and one way to see. Tier B of the roadmap is now complete.

@@ -52,25 +52,133 @@
 
   /* ---------------- persistence ---------------- */
 
+  var DB_NAME = 'planner-pro';
+  var DB_STORE = 'docs';
+  var dbPromise = null;
+  var backend = 'ls';          // 'idb' or 'ls'
+  var lastWriteError = null;
+
   function readRaw(key) {
     try { return localStorage.getItem(key); } catch (e) { return null; }
   }
 
-  function load() {
-    var raw = readRaw(KEY);
-    if (raw) {
-      try {
-        var parsed = JSON.parse(raw);
-        if (parsed && typeof parsed === 'object') state = parsed;
-      } catch (e) {
-        // corrupt document: keep a copy so nothing is silently destroyed
-        try { localStorage.setItem(KEY + '_corrupt_' + Date.now(), raw); } catch (e2) {}
-        state = { v: VERSION, activeUser: null, users: {} };
-      }
-    } else {
-      var legacy = readRaw(LEGACY_KEY);
-      if (legacy) state = migrateV13(legacy);
+  function fresh() { return { v: VERSION, activeUser: null, users: {} }; }
+
+  /* ---- IndexedDB ---- */
+
+  function openDb() {
+    if (dbPromise) return dbPromise;
+    dbPromise = new Promise(function (resolve, reject) {
+      if (!global.indexedDB) { reject(new Error('no-indexeddb')); return; }
+      var req = global.indexedDB.open(DB_NAME, 1);
+      req.onupgradeneeded = function () {
+        var db = req.result;
+        if (!db.objectStoreNames.contains(DB_STORE)) db.createObjectStore(DB_STORE);
+      };
+      req.onsuccess = function () { resolve(req.result); };
+      req.onerror = function () { reject(req.error || new Error('idb-open-failed')); };
+      req.onblocked = function () { reject(new Error('idb-blocked')); };
+    });
+    return dbPromise;
+  }
+
+  function idb(mode, fn) {
+    return openDb().then(function (db) {
+      return new Promise(function (resolve, reject) {
+        var tx = db.transaction(DB_STORE, mode);
+        var request = fn(tx.objectStore(DB_STORE));
+        tx.oncomplete = function () { resolve(request ? request.result : undefined); };
+        tx.onerror = function () { reject(tx.error || new Error('idb-tx-failed')); };
+        tx.onabort = function () { reject(tx.error || new Error('idb-tx-aborted')); };
+      });
+    });
+  }
+
+  /* ---- gzip, when the browser has it ---- */
+
+  function pack(value) {
+    var json = JSON.stringify(value);
+    if (!global.CompressionStream || typeof global.Blob !== 'function') {
+      return Promise.resolve({ v: 1, gz: false, json: json });
     }
+    try {
+      var stream = new global.Blob([json]).stream().pipeThrough(new global.CompressionStream('gzip'));
+      return new global.Response(stream).arrayBuffer().then(function (buf) {
+        return { v: 1, gz: true, buf: buf };
+      });
+    } catch (e) {
+      return Promise.resolve({ v: 1, gz: false, json: json });
+    }
+  }
+
+  function unpack(record) {
+    if (!record) return Promise.resolve(null);
+    if (typeof record === 'string') {
+      try { return Promise.resolve(JSON.parse(record)); } catch (e) { return Promise.resolve(null); }
+    }
+    if (!record.gz) {
+      try { return Promise.resolve(JSON.parse(record.json)); } catch (e) { return Promise.resolve(null); }
+    }
+    try {
+      var stream = new global.Blob([record.buf]).stream().pipeThrough(new global.DecompressionStream('gzip'));
+      return new global.Response(stream).text().then(function (text) { return JSON.parse(text); });
+    } catch (e) {
+      return Promise.resolve(null);
+    }
+  }
+
+  /* ---- load ---- */
+
+  function load() {
+    var lsRaw = readRaw(KEY);
+    var legacyRaw = readRaw(LEGACY_KEY);
+
+    return openDb().then(function () {
+      backend = 'idb';
+      return idb('readonly', function (store) { return store.get(KEY); });
+    }).then(function (record) {
+      return unpack(record);
+    }).then(function (fromDb) {
+      if (fromDb && typeof fromDb === 'object') {
+        state = fromDb;
+        return finishLoad();
+      }
+      if (lsRaw) {
+        // first run on this build: lift the localStorage document into IndexedDB
+        try {
+          state = JSON.parse(lsRaw);
+        } catch (e) {
+          try { localStorage.setItem(KEY + '_corrupt_' + Date.now(), lsRaw); } catch (e2) {}
+          state = fresh();
+        }
+        normalize();
+        return persistNow().then(function (ok) {
+          if (ok) { try { localStorage.removeItem(KEY); } catch (e) {} }
+          return state;
+        });
+      }
+      if (legacyRaw) { state = migrateV13(legacyRaw); return finishLoad(); }
+      state = fresh();
+      return finishLoad();
+    }).catch(function () {
+      // no IndexedDB (file://, private window, blocked storage): stay on localStorage
+      backend = 'ls';
+      if (lsRaw) {
+        try { state = JSON.parse(lsRaw); }
+        catch (e) {
+          try { localStorage.setItem(KEY + '_corrupt_' + Date.now(), lsRaw); } catch (e2) {}
+          state = fresh();
+        }
+      } else if (legacyRaw) {
+        state = migrateV13(legacyRaw);
+      } else {
+        state = fresh();
+      }
+      return finishLoad();
+    });
+  }
+
+  function finishLoad() {
     normalize();
     return state;
   }
@@ -128,27 +236,46 @@
     if (state.activeUser && !state.users[state.activeUser]) state.activeUser = null;
   }
 
-  function persist() {
-    try {
-      localStorage.setItem(KEY, JSON.stringify(state));
+  function persistNow() {
+    var snapshot = state;
+
+    if (backend === 'ls') {
+      try {
+        localStorage.setItem(KEY, JSON.stringify(snapshot));
+        emit('saved');
+        return Promise.resolve(true);
+      } catch (e) {
+        emit('error', e);
+        return Promise.resolve(false);
+      }
+    }
+
+    return pack(snapshot).then(function (record) {
+      return idb('readwrite', function (store) { return store.put(record, KEY); });
+    }).then(function () {
+      lastWriteError = null;
       emit('saved');
       return true;
-    } catch (e) {
+    }).catch(function (e) {
+      // never lose an edit: fall back to localStorage for this write
+      try { localStorage.setItem(KEY, JSON.stringify(snapshot)); } catch (e2) { /* full */ }
+      lastWriteError = e;
       emit('error', e);
       return false;
-    }
+    });
   }
 
   /** Debounced save — safe to call on every keystroke. */
   function save() {
     if (saveTimer) clearTimeout(saveTimer);
     emit('saving');
-    saveTimer = setTimeout(function () { saveTimer = null; persist(); }, 220);
+    saveTimer = setTimeout(function () { saveTimer = null; persistNow(); }, 220);
   }
 
   function saveNow() {
     if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; }
-    return persist();
+    persistNow();
+    return true;
   }
 
   /* ---------------- v13 migration ---------------- */
@@ -615,7 +742,12 @@
   function usage() {
     var bytes = 0;
     try { bytes = new Blob([JSON.stringify(state)]).size; } catch (e) { bytes = 0; }
-    return { bytes: bytes, kb: Math.round(bytes / 1024) };
+    return {
+      bytes: bytes,
+      kb: Math.round(bytes / 1024),
+      backend: backend,
+      compressed: backend === 'idb' && !!global.CompressionStream
+    };
   }
 
   function setTheme(theme) {
