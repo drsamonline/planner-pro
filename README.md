@@ -113,11 +113,11 @@ SmartScreen/Gatekeeper will ask you to confirm the first launch):
 |---|---|---|
 | [`planner-pro.html`](https://github.com/drsamonline/planner-pro/releases/latest/download/planner-pro.html) | any | The entire app in one file — no server, no internet |
 | [`planner-pro-web.zip`](https://github.com/drsamonline/planner-pro/releases/latest/download/planner-pro-web.zip) | any | Offline web build: unzip, open `index.html` |
-| [`planner-pro-14.0.0-windows-setup.exe`](https://github.com/drsamonline/planner-pro/releases/latest/download/planner-pro-14.0.0-windows-setup.exe) | Windows | Installer (Electron) |
-| [`planner-pro-14.0.0-windows-portable.exe`](https://github.com/drsamonline/planner-pro/releases/latest/download/planner-pro-14.0.0-windows-portable.exe) | Windows | Portable, no install |
-| [`planner-pro-14.0.0-macos-arm64.dmg`](https://github.com/drsamonline/planner-pro/releases/latest/download/planner-pro-14.0.0-macos-arm64.dmg) | macOS (Apple silicon) | Disk image |
-| [`planner-pro_14.0.0_amd64.deb`](https://github.com/drsamonline/planner-pro/releases/latest/download/planner-pro_14.0.0_amd64.deb) | Debian / Ubuntu | Package |
-| [`planner-pro-14.0.0-android.apk`](https://github.com/drsamonline/planner-pro/releases/latest/download/planner-pro-14.0.0-android.apk) | Android | Debug APK — sideload it, or `adb install planner-pro-14.0.0-android.apk` |
+| [`planner-pro-14.1.0-windows-setup.exe`](https://github.com/drsamonline/planner-pro/releases/latest/download/planner-pro-14.1.0-windows-setup.exe) | Windows | Installer (Electron) |
+| [`planner-pro-14.1.0-windows-portable.exe`](https://github.com/drsamonline/planner-pro/releases/latest/download/planner-pro-14.1.0-windows-portable.exe) | Windows | Portable, no install |
+| [`planner-pro-14.1.0-macos-arm64.dmg`](https://github.com/drsamonline/planner-pro/releases/latest/download/planner-pro-14.1.0-macos-arm64.dmg) | macOS (Apple silicon) | Disk image |
+| [`planner-pro_14.1.0_amd64.deb`](https://github.com/drsamonline/planner-pro/releases/latest/download/planner-pro_14.1.0_amd64.deb) | Debian / Ubuntu | Package |
+| [`planner-pro-14.1.0-android.apk`](https://github.com/drsamonline/planner-pro/releases/latest/download/planner-pro-14.1.0-android.apk) | Android | Debug APK — sideload it, or `adb install planner-pro-14.1.0-android.apk` |
 
 **Run from source**
 
