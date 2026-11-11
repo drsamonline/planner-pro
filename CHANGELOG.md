@@ -4,6 +4,28 @@ All notable changes to Planner Pro. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [semantic versioning](https://semver.org/).
 
+## [14.3.0] — 2026-11-11
+
+Routines. The planner stops assuming every day is hand-built from nothing.
+Data schema is additive — existing v14 documents open as-is.
+
+### Added
+
+- **Repeating tasks.** A rule is `daily`, `weekdays`, or a set of weekdays. Instances are ordinary todos carrying `recurringId`, materialised lazily when a day is opened — so a missed day fills itself in, nothing is duplicated, and the stored document stays small. Set a repeat in quick add, or from any task's details.
+- **Repeating-tasks manager** in Settings: pause/resume and delete rules, with the human label ("weekdays", "every Sun").
+- **Day templates.** Save a day's time blocks and tasks (with their estimates, times and tags) under a name, then apply that template to any date. Duplicate task text is skipped.
+- **Time estimates.** Tasks can carry an estimate in minutes; quick add reads `45m`, `2h` and `1h 30m`. The day and Today views show a planned-vs-capacity bar, which turns amber and names the overrun when you book more hours than the day has.
+- **Daily capacity** setting (default 8 hours), so the bar measures against your day, not an assumption.
+
+### Changed
+
+- Task rows gained a details action (`⋯`) that opens estimate + repeat together, instead of one control per attribute.
+- Row metadata now shows a repeat icon, the estimate and the time as compact pills.
+
+### Verified
+
+- The end-to-end suite grew from 73 to **81 checks**: estimate parsing (`45m`, `2h`, `1h 30m`), the over-capacity bar, idempotent materialisation (a rule creates exactly one instance per day, twice in a row), weekday rules skipping Saturday, repeat creation from quick add with the task linked to its rule, pause/resume in Settings, the details dialog, and template save → apply including estimates.
+
 ## [14.2.0] — 2026-11-11
 
 Interaction. The list becomes something you can shape, and adding a task stops

@@ -44,7 +44,7 @@ fs.cpSync(APP, STAGE, { recursive: true });
 await minifyTree(STAGE);
 
 // a README inside the zip, for whoever opens it in six months
-fs.writeFileSync(path.join(STAGE, 'READ-ME-FIRST.txt'), `Planner Pro v14.2.0 — offline build
+fs.writeFileSync(path.join(STAGE, 'READ-ME-FIRST.txt'), `Planner Pro v14.3.0 — offline build
 Copyright 2026 Dr. Sohil Momin · PolyForm Noncommercial 1.0.0
 
 Open index.html in any modern browser. That's it — no server, no install.

@@ -128,7 +128,7 @@ Effort is honest wall-clock time for one developer who already knows the code:
 > prompt), A5 (inline editing), A7 (ICS export), A9 (palette date jump), A12
 > (accessibility pass). 14.2.0 — A6 (drag to reorder), A8 (natural-language quick
 > add), A10 (copy a day), A11 (keyboard list) and the minified build. **Tier A is
-> complete.**
+> complete. **14.3.0 — B1 (recurring tasks), B2 (templates), B5 (estimates).**
 
 | # | Enhancement | Why it matters | Effort | Weight |
 |---|---|---|---|---|
@@ -149,11 +149,11 @@ Effort is honest wall-clock time for one developer who already knows the code:
 
 | # | Enhancement | Why it matters | Effort | Weight |
 |---|---|---|---|---|
-| B1 | **Recurring tasks** — `repeat: daily \| weekdays \| weekly \| mon,wed`; materialised lazily on open | Removes the biggest reason people abandon planners | M | ~6 KB |
-| B2 | **Templates** — save a day or a block set ("clinic day", "deep work morning") and apply it | Makes a routine a two-tap action | M | ~5 KB |
+| B1 | ✅ **shipped in 14.3** — **Recurring tasks** — `repeat: daily \| weekdays \| weekly \| mon,wed`; materialised lazily on open | Removes the biggest reason people abandon planners | M | ~6 KB |
+| B2 | ✅ **shipped in 14.3** — **Templates** — save a day or a block set ("clinic day", "deep work morning") and apply it | Makes a routine a two-tap action | M | ~5 KB |
 | B3 | **Tags** — `#health` parsed inline, filterable, shown as chips | Lightweight structure without projects/folders | M | ~5 KB |
 | B4 | **Subtasks** (one level) with a parent progress count | "Publish release" usually has three steps | M | ~5 KB |
-| B5 | **Estimated minutes** per task + day total vs. available hours | Exposes over-planning, which is the real planning failure | S–M | ~3 KB |
+| B5 | ✅ **shipped in 14.3** — **Estimated minutes** per task + day total vs. available hours | Exposes over-planning, which is the real planning failure | S–M | ~3 KB |
 | B6 | **Year heatmap** — GitHub-style grid of completion intensity | The one chart that makes a year feel real | M | ~4 KB |
 | B7 | **Stats view** — 30/90-day completion trend, best streak, busiest weekday | Turns stored data into feedback | M | ~8 KB |
 | B8 | **Encrypted backup** — AES-GCM via WebCrypto with a passphrase, `.planner` file | Makes it safe to keep the backup in Drive/Dropbox | M | ~6 KB |
@@ -242,10 +242,10 @@ update prompt, inline editing, ICS export, palette date jump, accessibility pass
 Still open from this batch: drag-to-reorder (A6), natural-language quick add (A8),
 duplicate day (A10), keyboard-navigable list (A11), minified build.
 
-**v14.2 — "routines"** — ✅ shipped the interaction half (drag reorder, keyboard
-list, natural-language quick add, copy day, minified build). Still open: recurring
-tasks (B1), templates (B2), a real tag filter (B3), estimated minutes (B5), weekly
-review mode (B9).
+**v14.2 — "routines"** — ✅ shipped: drag reorder, keyboard list, natural-language
+quick add, copy day, minified build. **14.3.0** — ✅ recurring tasks (B1),
+templates (B2), estimates + capacity (B5). Still open: tag filter (B3), weekly
+review (B9), heatmap (B6), stats (B7), encrypted backup (B8).
 
 **v15 — "insight"**: year heatmap, stats view, encrypted backups, Markdown vault
 export, IndexedDB + compression, i18n groundwork.

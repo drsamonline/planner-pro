@@ -256,6 +256,16 @@
     currentParam = param || '';
     cursor = -1;
 
+    // materialise repeating tasks for whatever days this view shows
+    try {
+      if (id === 'today') Store.ensureRecurring(D.todayKey());
+      else if (id === 'day') Store.ensureRecurring(D.isKey(currentParam) ? currentParam : D.todayKey());
+      else if (id === 'week') {
+        var wsKey = D.weekStartKey(D.isKey(currentParam) ? currentParam : D.todayKey(), Store.user().weekStart);
+        D.weekDates(wsKey).forEach(function (k) { Store.ensureRecurring(k); });
+      }
+    } catch (e) { /* a broken rule must never block the view */ }
+
     var host = $('view');
     try {
       host.innerHTML = view.render(currentParam);
@@ -508,6 +518,175 @@
       Store.saveNow();
     }
     refresh();
+  }
+
+  /* ---------------- task details: estimate & repeat ---------------- */
+
+  function weekdayChecks(selected) {
+    return D.DAYS_SHORT.map(function (name, i) {
+      return '<label style="display:inline-flex;gap:5px;align-items:center;margin:0 10px 6px 0;cursor:pointer">' +
+        '<input type="checkbox" data-day="' + i + '"' + (selected.indexOf(i) >= 0 ? ' checked' : '') + '>' +
+        '<span class="tiny">' + name + '</span></label>';
+    }).join('');
+  }
+
+  function readRepeatChoice(root) {
+    var choice = root.querySelector('#detRepeat').value;
+    if (choice === 'none') return null;
+    if (choice === 'custom') {
+      var days = [];
+      Array.prototype.forEach.call(root.querySelectorAll('[data-day]'), function (el) {
+        if (el.checked) days.push(Number(el.dataset.day));
+      });
+      if (!days.length) return { repeat: 'custom', days: [] };
+      return { repeat: 'custom', days: days };
+    }
+    if (choice === 'weekly') return { repeat: 'custom', days: [D.weekday(D.todayKey())] };
+    return { repeat: choice, days: [] };
+  }
+
+  function actTodoDetails(el) {
+    var f = findItem(el.dataset.scope, el.dataset.key, el.dataset.id);
+    if (!f) return;
+    var t = f.item;
+    var rule = t.recurringId ? Store.recurring().filter(function (r) { return r.id === t.recurringId; })[0] : null;
+    var choice = rule ? (rule.repeat === 'custom' ? 'custom' : rule.repeat) : 'none';
+    var days = rule && rule.days ? rule.days : [];
+
+    UI.openModal({
+      title: 'Task details',
+      body: '<p class="small" style="margin-bottom:10px">' + esc(t.text) + '</p>' +
+        '<div class="field"><label for="detEst">Estimate (minutes)</label>' +
+        '<input type="number" id="detEst" min="0" max="1440" step="5" value="' + (t.est || '') + '" placeholder="e.g. 45"></div>' +
+        '<div class="field" style="margin-top:12px"><label for="detRepeat">Repeat</label>' +
+        '<select id="detRepeat">' +
+        '<option value="none"' + (choice === 'none' ? ' selected' : '') + '>Does not repeat</option>' +
+        '<option value="daily"' + (choice === 'daily' ? ' selected' : '') + '>Every day</option>' +
+        '<option value="weekdays"' + (choice === 'weekdays' ? ' selected' : '') + '>Weekdays (Mon–Fri)</option>' +
+        '<option value="weekly"' + (choice === 'weekly' ? ' selected' : '') + '>Every ' + D.DAYS[D.weekday(D.todayKey())] + '</option>' +
+        '<option value="custom"' + (choice === 'custom' ? ' selected' : '') + '>Specific days…</option>' +
+        '</select></div>' +
+        '<div id="detDays" style="margin-top:8px;' + (choice === 'custom' ? '' : 'display:none') + '">' +
+        weekdayChecks(days) + '</div>',
+      actions: [
+        { label: 'Cancel', value: null, cls: 'btn-ghost' },
+        {
+          label: 'Save', value: 'save', cls: 'btn', onClick: function () {
+            var est = Number($('detEst').value || 0);
+            if (est < 0 || est > 1440) { UI.toast('Estimate must be 0–1440 minutes'); return false; }
+            t.est = est || 0;
+
+            var picked = readRepeatChoice(document.getElementById('modalBody'));
+            if (!picked) {
+              if (t.recurringId) {
+                Store.removeRecurring(t.recurringId);
+                delete t.recurringId;
+              }
+            } else {
+              if (t.recurringId) {
+                var existing = Store.recurring().filter(function (r) { return r.id === t.recurringId; })[0];
+                if (existing) {
+                  existing.repeat = picked.repeat;
+                  existing.days = picked.days;
+                  existing.est = t.est;
+                  existing.text = t.text;
+                  existing.at = t.at || '';
+                  existing.tags = (t.tags || []).slice();
+                  existing.prio = !!t.prio;
+                  Store.saveNow();
+                }
+              } else {
+                var created = Store.addRecurring({
+                  text: t.text, repeat: picked.repeat, days: picked.days,
+                  prio: !!t.prio, at: t.at || '', tags: (t.tags || []).slice(),
+                  est: t.est, from: D.addDays(D.todayKey(), 1)
+                });
+                if (created) t.recurringId = created.id;
+              }
+            }
+            Store.saveNow();
+            refresh();
+            UI.toast(picked ? 'Repeats ' + Store.repeatLabel({ repeat: picked.repeat, days: picked.days }) : 'Details saved');
+          }
+        }
+      ],
+      onMount: function (body) {
+        var select = body.querySelector('#detRepeat');
+        select.addEventListener('change', function () {
+          body.querySelector('#detDays').style.display = select.value === 'custom' ? '' : 'none';
+        });
+      }
+    });
+  }
+
+  /* ---------------- templates ---------------- */
+
+  function templatesModal(dayKey) {
+    var list = Store.templates();
+    var body = '<div class="stack">' +
+      (list.length
+        ? list.map(function (tpl) {
+          return '<div class="year-item" style="padding:9px 10px">' +
+            '<div style="min-width:0"><div class="small strong truncate">' + esc(tpl.name) + '</div>' +
+            '<div class="tiny dim">' + tpl.blocks.length + ' blocks · ' + tpl.todos.length + ' tasks</div></div>' +
+            '<span class="spacer"></span>' +
+            '<button class="btn btn-ghost btn-sm" data-act="template-apply" data-id="' + esc(tpl.id) + '" data-key="' + esc(dayKey) + '">Apply</button>' +
+            '<button class="icon-btn flat danger" data-act="template-delete" data-id="' + esc(tpl.id) + '" aria-label="Delete template">' + icon('x') + '</button>' +
+            '</div>';
+        }).join('')
+        : UI.empty('note', 'No templates yet. Build a day once, save it here, reuse it.'));
+    body += '</div>' +
+      '<div class="field" style="margin-top:14px"><label for="tplName">Save this day as a template</label>' +
+      '<input type="text" id="tplName" placeholder="e.g. Clinic day" autocomplete="off"></div>';
+
+    UI.openModal({
+      title: 'Templates',
+      body: body,
+      actions: [
+        { label: 'Close', value: null, cls: 'btn-ghost' },
+        {
+          label: 'Save this day', value: 'save', cls: 'btn', onClick: function () {
+            var name = ($('tplName').value || '').trim();
+            if (!name) { UI.toast('Give the template a name'); return false; }
+            var d = Store.day(dayKey, true);
+            if (!d.blocks.length && !d.todos.length) { UI.toast('This day is empty'); return false; }
+            Store.addTemplate({
+              name: name,
+              blocks: d.blocks.map(function (b) { return { start: b.start, end: b.end || '', text: b.text }; }),
+              todos: d.todos.filter(function (t) { return !t.recurringId; }).map(function (t) {
+                return { text: t.text, prio: !!t.prio, est: t.est || 0, at: t.at || '', tags: (t.tags || []).slice() };
+              })
+            });
+            UI.toast('Template saved');
+            setTimeout(function () { templatesModal(dayKey); }, 120);
+          }
+        }
+      ]
+    });
+  }
+
+  function applyTemplate(id, dayKey) {
+    var tpl = Store.templates().filter(function (t) { return t.id === id; })[0];
+    if (!tpl) return;
+    var d = Store.day(dayKey, true);
+    var existing = {};
+    d.todos.forEach(function (t) { existing[t.text.toLowerCase()] = 1; });
+    var added = 0;
+    tpl.blocks.forEach(function (b) {
+      d.blocks.push({ id: Store.uid(), start: b.start || '', end: b.end || '', text: b.text || '' });
+    });
+    tpl.todos.forEach(function (t) {
+      if (existing[t.text.toLowerCase()]) return;
+      d.todos.push({
+        id: Store.uid(), text: t.text, done: false, prio: !!t.prio,
+        est: t.est || 0, at: t.at || '', tags: (t.tags || []).slice()
+      });
+      added++;
+    });
+    Store.saveNow();
+    UI.closeModal(null);
+    refresh();
+    UI.toast('Applied “' + tpl.name + '”' + (added ? ' · ' + added + ' tasks' : ''));
   }
 
   /* ---------------- trash ---------------- */
@@ -892,6 +1071,17 @@
       }
     }
 
+    var est = 0;
+    var span;
+    if ((span = text.match(/\b(\d{1,2})\s*(?:h|hr|hrs|hour|hours)\b/i))) {
+      est += Number(span[1]) * 60;
+      text = text.replace(span[0], ' ');
+    }
+    if ((span = text.match(/\b(\d{1,3})\s*(?:m|min|mins|minute|minutes)\b/i))) {
+      est += Number(span[1]);
+      text = text.replace(span[0], ' ');
+    }
+
     var dateKey = null;
     var lower = text.toLowerCase();
     var weekday = lower.match(/\b(next\s+)?(sunday|monday|tuesday|wednesday|thursday|friday|saturday|sun|mon|tue|wed|thu|fri|sat)\b/);
@@ -921,7 +1111,7 @@
 
     return {
       text: text.replace(/\s+/g, ' ').trim(),
-      dateKey: dateKey, time: time, tags: tags, prio: prio
+      dateKey: dateKey, time: time, tags: tags, prio: prio, est: est
     };
   }
 
@@ -938,6 +1128,7 @@
     if (parsed.dateKey) bits.push('<span class="pill">' + esc(D.relative(parsed.dateKey) || D.prettyDay(parsed.dateKey)) + '</span>');
     if (parsed.time) bits.push('<span class="pill pill-time">' + esc(parsed.time) + '</span>');
     parsed.tags.forEach(function (t) { bits.push('<span class="pill pill-tag">#' + esc(t) + '</span>'); });
+    if (parsed.est) bits.push('<span class="pill pill-est">' + esc(UI.duration(parsed.est)) + '</span>');
     if (parsed.prio) bits.push('<span class="pill pill-warn">priority</span>');
     box.className = 'tiny';
     box.innerHTML = '<span class="dim">Saves as:</span> ' + esc(parsed.text || '—') +
@@ -954,6 +1145,13 @@
         'Type a date, a time or #tag — they are picked out automatically.</div>' +
         '<div class="field" style="margin-top:12px"><label for="qaDate">Day (overrides the text)</label>' +
         '<input type="date" id="qaDate" value=""></div>' +
+        '<div class="field" style="margin-top:12px"><label for="qaRepeat">Repeat</label>' +
+        '<select id="qaRepeat">' +
+        '<option value="none">Does not repeat</option>' +
+        '<option value="daily">Every day</option>' +
+        '<option value="weekdays">Weekdays (Mon–Fri)</option>' +
+        '<option value="weekly">Every ' + D.DAYS[D.weekday(D.todayKey())] + '</option>' +
+        '</select></div>' +
         '<label style="display:flex;gap:9px;align-items:center;margin-top:10px;cursor:pointer">' +
         '<input type="checkbox" id="qaPrio"><span class="small">Mark as priority</span></label>',
       actions: [
@@ -972,11 +1170,27 @@
             };
             if (parsed.time) todo.at = parsed.time;
             if (parsed.tags.length) todo.tags = parsed.tags;
+            if (parsed.est) todo.est = parsed.est;
+
+            var repeat = ($('qaRepeat') || {}).value || 'none';
+            if (repeat !== 'none') {
+              var rule = Store.addRecurring({
+                text: todo.text,
+                repeat: repeat === 'weekly' ? 'custom' : repeat,
+                days: repeat === 'weekly' ? [D.weekday(key)] : [],
+                prio: todo.prio, at: todo.at || '', tags: todo.tags || [],
+                est: todo.est || 0, from: D.addDays(key, 1)
+              });
+              if (rule) todo.recurringId = rule.id;
+            }
+
             Store.day(key, true).todos.push(todo);
             Store.saveNow();
             var bits = [D.relative(key) || D.prettyDay(key)];
             if (parsed.time) bits.push('at ' + parsed.time);
+            if (parsed.est) bits.push(UI.duration(parsed.est));
             if (parsed.tags.length) bits.push(parsed.tags.map(function (t) { return '#' + t; }).join(' '));
+            if (repeat !== 'none') bits.push('repeats ' + repeat);
             UI.toast('Added to ' + bits.join(' · '));
             refresh();
           }
@@ -1269,6 +1483,20 @@
         case 'trash-delete': actTrashDelete(ds.id); break;
         case 'trash-empty': actTrashEmpty(); break;
         case 'duplicate-day': actDuplicateDay(ds.key); break;
+        case 'todo-details': actTodoDetails(el); break;
+        case 'templates': templatesModal(ds.key || D.todayKey()); break;
+        case 'template-apply': applyTemplate(ds.id, ds.key); break;
+        case 'template-delete':
+          Store.removeTemplate(ds.id);
+          UI.toast('Template deleted');
+          templatesModal(currentParam || D.todayKey());
+          break;
+        case 'recurring-toggle': Store.toggleRecurring(ds.id); refresh(); break;
+        case 'recurring-delete':
+          Store.removeRecurring(ds.id);
+          refresh();
+          UI.toast('Repeating task removed');
+          break;
         case 'change-pin': actChangePin(); break;
         case 'delete-profile': actDeleteProfile(); break;
         case 'install': actInstall(); break;
@@ -1347,6 +1575,7 @@
       if (b === 'theme') { Store.setTheme(t.value); applyTheme(); refresh(); UI.toast('Theme updated'); return; }
       if (b === 'week-start') { Store.user().weekStart = Number(t.value); Store.saveNow(); refresh(); return; }
       if (b === 'auto-archive') { Store.user().settings.autoArchive = t.checked; Store.saveNow(); return; }
+      if (b === 'capacity') { Store.setCapacity(t.value); refresh(); return; }
       if (b === 'require-pin') { Store.user().settings.requirePin = t.checked; Store.saveNow(); return; }
       if (b === 'block-start' || b === 'block-text') {
         var day = Store.day(t.dataset.key, true);

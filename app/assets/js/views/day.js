@@ -30,6 +30,7 @@
         '<button class="btn btn-ghost btn-sm" data-act="export-day" data-key="' + key + '">' + icon('download') + '<span class="btn-label">Markdown</span></button>' +
         '<button class="btn btn-ghost btn-sm" data-act="export-ics" data-days="' + key + '" title="Export to a calendar app">' + icon('clock') + '<span class="btn-label">Calendar</span></button>' +
         '<button class="btn btn-ghost btn-sm" data-act="duplicate-day" data-key="' + key + '" title="Copy blocks and tasks from another day">' + icon('carry') + '<span class="btn-label">Copy day</span></button>' +
+        '<button class="btn btn-ghost btn-sm" data-act="templates" data-key="' + key + '" title="Save or apply a day template">' + icon('note') + '<span class="btn-label">Templates</span></button>' +
         '</div>';
 
       h += '<div class="card card-pad"><input class="intention" type="text" value="' + esc(d.intention || '') +
@@ -42,6 +43,7 @@
         (st.total ? '<span class="pill' + (st.pct === 100 ? ' pill-ok' : '') + '">' + st.done + '/' + st.total + ' · ' + st.pct + '%</span>' : '') +
         '</div>' +
         Parts.composer('day', key, 'What needs doing?') +
+        Parts.loadBar(Store.dayLoad(key)) +
         Parts.rows(d.todos, 'day', key, 'check', 'Empty list. Add a task above — or enjoy the quiet.') +
         '<div class="row-actions">' +
         (prevOpen ? '<button class="btn btn-ghost btn-sm" data-act="carry-over" data-from="' + prev + '" data-to="' + key + '">' +

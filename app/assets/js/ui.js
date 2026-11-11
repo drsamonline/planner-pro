@@ -138,6 +138,16 @@
     }, 500);
   }
 
+  /** 45 → "45m", 90 → "1h 30m", 120 → "2h" */
+  function duration(minutes) {
+    var m = Math.round(Number(minutes) || 0);
+    if (m <= 0) return '';
+    var h = Math.floor(m / 60);
+    var rest = m % 60;
+    if (!h) return rest + 'm';
+    return rest ? h + 'h ' + rest + 'm' : h + 'h';
+  }
+
   function fmtBytes(n) {
     if (n < 1024) return n + ' B';
     if (n < 1024 * 1024) return (n / 1024).toFixed(1) + ' KB';
@@ -180,7 +190,7 @@
   global.UI = {
     esc: esc, icon: icon, toast: toast, hideToast: hideToast, initials: initials,
     openModal: openModal, closeModal: closeModal, confirm: confirm, initModal: initModal,
-    download: download, fmtBytes: fmtBytes, ring: ring, bars: bars,
+    download: download, fmtBytes: fmtBytes, duration: duration, ring: ring, bars: bars,
     highlight: highlight, empty: empty
   };
 })(window);

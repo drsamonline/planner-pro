@@ -518,6 +518,161 @@ await step('copies blocks and tasks from another day', async () => {
 });
 
 /* ------------------------------------------------------------------ */
+console.log('\n— repeats, templates & estimates —');
+await step('quick add parses an estimate', async () => {
+  const a = await page.evaluate(() => PlannerDebug.parseQuickAdd('Write the report 45m'));
+  eq(a.text, 'Write the report');
+  eq(a.est, 45);
+  const b = await page.evaluate(() => PlannerDebug.parseQuickAdd('Deep work 2h #focus'));
+  eq(b.est, 120);
+  eq(b.tags.join(','), 'focus');
+  const c = await page.evaluate(() => PlannerDebug.parseQuickAdd('Plan the week 1h 30m'));
+  eq(c.est, 90, '1h 30m should be 90 minutes');
+});
+await step('day load shows planned time and warns over capacity', async () => {
+  await page.evaluate(() => {
+    Store.setCapacity(60);
+    const d = Store.day('2026-07-01', true);
+    d.todos = [
+      { id: 'l1', text: 'One', done: false, est: 45 },
+      { id: 'l2', text: 'Two', done: false, est: 30 }
+    ];
+    Store.saveNow();
+    location.hash = '#/day/2026-07-01';
+  });
+  await sleep(400);
+  const load = await page.evaluate(() => Store.dayLoad('2026-07-01'));
+  eq(load.minutes, 75, 'total minutes');
+  eq(load.capacity, 60, 'capacity');
+  eq(load.over, true, 'over flag');
+  ok(await page.$('.load.over'), 'no over-capacity marker in the DOM');
+  ok((await textOf('.load')).includes('Over capacity'), 'missing over-capacity text');
+});
+await step('a repeating task appears once per matching day', async () => {
+  const res = await page.evaluate(() => {
+    Store.setCapacity(480);
+    Store.state().users[Store.state().activeUser].recurring = [];
+    Store.addRecurring({ text: 'Morning review', repeat: 'daily', from: '2026-07-01' });
+    const first = Store.ensureRecurring('2026-07-02');
+    const again = Store.ensureRecurring('2026-07-02');
+    const third = Store.ensureRecurring('2026-07-03');
+    return { first, again, third, count: Store.peekDay('2026-07-02').todos.length };
+  });
+  eq(res.first, 1, 'first materialisation');
+  eq(res.again, 0, 'must be idempotent');
+  eq(res.third, 1, 'next day');
+  eq(res.count, 1, 'duplicate instance created');
+});
+await step('weekday rules skip the weekend', async () => {
+  const res = await page.evaluate(() => {
+    Store.state().users[Store.state().activeUser].recurring = [];
+    Store.addRecurring({ text: 'Standup', repeat: 'weekdays', from: '2026-07-01' });
+    return {
+      saturday: Store.ensureRecurring('2026-07-04'),
+      monday: Store.ensureRecurring('2026-07-06')
+    };
+  });
+  eq(res.saturday, 0, 'weekday rule ran on a Saturday');
+  eq(res.monday, 1, 'weekday rule missed Monday');
+});
+await step('quick add can create a repeating task', async () => {
+  await page.evaluate(() => {
+    Store.state().users[Store.state().activeUser].recurring = [];
+    Store.saveNow();
+    location.hash = '#/today';
+  });
+  await sleep(350);
+  await page.evaluate(() => document.activeElement.blur());
+  await page.keyboard.press('KeyN');
+  await sel('#qaText');
+  await page.type('#qaText', 'Evening stretch 10m');
+  await page.select('#qaRepeat', 'daily');
+  const btns = await page.$$('#modalActions .btn');
+  await btns[btns.length - 1].click();
+  await sleep(450);
+
+  const res = await page.evaluate(() => ({
+    rules: Store.recurring().length,
+    label: Store.recurring()[0] ? Store.repeatLabel(Store.recurring()[0]) : '',
+    linked: Store.day(DateUtil.todayKey(), true).todos.some((t) => t.text === 'Evening stretch' && t.recurringId),
+    est: (Store.day(DateUtil.todayKey(), true).todos.filter((t) => t.text === 'Evening stretch')[0] || {}).est
+  }));
+  eq(res.rules, 1, 'rule not created');
+  eq(res.label, 'every day');
+  eq(res.linked, true, 'task not linked to its rule');
+  eq(res.est, 10, 'estimate lost');
+});
+await step('repeating rules are manageable in Settings', async () => {
+  await nav('settings');
+  const text = await page.$eval('#view', (el) => el.textContent);
+  ok(text.includes('Repeating tasks'), 'repeating card missing');
+  ok(text.includes('Evening stretch'), 'rule not listed');
+  await page.click('[data-act="recurring-toggle"]');
+  await sleep(300);
+  eq(await page.evaluate(() => Store.recurring()[0].active), false, 'pause failed');
+  await page.click('[data-act="recurring-toggle"]');
+  await sleep(300);
+});
+await step('task details sets an estimate', async () => {
+  await page.evaluate(() => { location.hash = '#/day/' + DateUtil.todayKey(); });
+  await sleep(350);
+  await page.click('.rows .row [data-act="todo-details"]');
+  await sel('#detEst');
+  await page.$eval('#detEst', (el) => { el.value = '25'; });
+  const btns = await page.$$('#modalActions .btn');
+  await btns[btns.length - 1].click();
+  await sleep(350);
+  const est = await page.evaluate(() => {
+    const d = Store.day(DateUtil.todayKey(), true);
+    return d.todos.filter((t) => t.est === 25).length;
+  });
+  ok(est > 0, 'estimate not saved');
+});
+await step('saves a day as a template and applies it', async () => {
+  await page.evaluate(() => {
+    const d = Store.day('2026-08-10', true);
+    d.blocks = [{ id: 'tb1', start: '09:00', end: '', text: 'Clinic' }];
+    d.todos = [{ id: 'tt1', text: 'Review patients', done: false, est: 60 }];
+    Store.saveNow();
+    location.hash = '#/day/2026-08-10';
+  });
+  await sleep(400);
+  await clickAct('templates');
+  await sel('#tplName');
+  await page.type('#tplName', 'Clinic day');
+  const btns = await page.$$('#modalActions .btn');
+  await btns[btns.length - 1].click();
+  await sleep(600);
+  eq(await page.evaluate(() => Store.templates().length), 1, 'template not saved');
+
+  await page.keyboard.press('Escape');
+  await sleep(200);
+  await page.evaluate(() => {
+    const d = Store.day('2026-08-11', true);
+    d.blocks = []; d.todos = [];
+    Store.saveNow();
+    location.hash = '#/day/2026-08-11';
+  });
+  await sleep(400);
+  await clickAct('templates');
+  await sel('[data-act="template-apply"]');
+  await page.click('[data-act="template-apply"]');
+  await sleep(500);
+
+  const applied = await page.evaluate(() => {
+    const d = Store.day('2026-08-11', true);
+    return {
+      blocks: d.blocks.map((b) => b.text),
+      todos: d.todos.map((t) => t.text),
+      est: (d.todos[0] || {}).est
+    };
+  });
+  ok(applied.blocks.includes('Clinic'), 'block not applied');
+  ok(applied.todos.includes('Review patients'), 'task not applied');
+  eq(applied.est, 60, 'estimate not carried into the template');
+});
+
+/* ------------------------------------------------------------------ */
 console.log('\n— week view —');
 await step('renders 7 day columns', async () => {
   await nav('week');

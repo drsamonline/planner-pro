@@ -463,6 +463,19 @@ label { font-size: 12px; color: var(--text-2); font-weight: 550; display: block;
 .row-main { display: flex; align-items: center; gap: 8px; min-width: 0; flex-wrap: wrap; }
 .row-meta { display: inline-flex; gap: 4px; flex-wrap: wrap; }
 .pill-time { background: color-mix(in srgb, var(--accent-2) 15%, transparent); color: var(--accent-2); }
+.pill-est { background: var(--surface-3); color: var(--text-2); font-variant-numeric: tabular-nums; }
+.pill-repeat {
+  background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent);
+  display: inline-flex; align-items: center; gap: 2px;
+}
+.pill-repeat .i { width: 11px; height: 11px; stroke-width: 2; }
+
+/* planned vs capacity */
+.load { display: grid; gap: 5px; margin: 2px 0 4px; }
+.load-text { display: flex; justify-content: space-between; gap: 8px; color: var(--text-2); }
+.load-bar { height: 4px; border-radius: 4px; background: var(--surface-3); overflow: hidden; }
+.load-bar > i { display: block; height: 100%; background: var(--accent); border-radius: 4px; transition: width .2s; }
+.load.over .load-bar > i { background: var(--warn); }
 .pill-tag { background: var(--surface-3); color: var(--text-2); font-weight: 600; }
 .drag-spacer { width: 14px; }
 
@@ -504,6 +517,7 @@ label { font-size: 12px; color: var(--text-2); font-weight: 550; display: block;
 .check:hover { border-color: var(--accent); background: var(--accent-soft); }
 .check .i { width: 13px; height: 13px; stroke-width: 2.6; }
 .row.done .check { background: var(--ok); border-color: var(--ok); color: #06231a; }
+.check.on { background: var(--ok); border-color: var(--ok); color: #06231a; }
 .prio .check { border-color: var(--warn); }
 
 .pill {

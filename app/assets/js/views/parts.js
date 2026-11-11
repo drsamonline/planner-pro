@@ -20,7 +20,9 @@
 
   function metaPills(t) {
     var out = '';
+    if (t.recurringId) out += '<span class="pill pill-repeat" title="Repeating task">' + icon('repeat') + '</span>';
     if (t.at) out += '<span class="pill pill-time">' + esc(t.at) + '</span>';
+    if (t.est) out += '<span class="pill pill-est">' + esc(UI.duration(t.est)) + '</span>';
     (t.tags || []).forEach(function (tag) {
       out += '<span class="pill pill-tag">#' + esc(tag) + '</span>';
     });
@@ -36,6 +38,7 @@
       (t.done ? 'Mark not done' : 'Mark done') + '">' + icon('check') + '</button>' +
       '<div class="row-main">' + textCell(t, scope, key) + metaPills(t) + '</div>' +
       '<div class="row-actions">' +
+      '<button class="icon-btn" data-act="todo-details"' + attrs + ' title="Estimate &amp; repeat" aria-label="Details">' + icon('more') + '</button>' +
       '<button class="icon-btn" data-act="todo-prio"' + attrs + ' title="Priority" aria-label="Priority">' + icon('star') + '</button>' +
       '<button class="icon-btn danger" data-act="todo-del"' + attrs + ' title="Delete" aria-label="Delete">' + icon('trash') + '</button>' +
       '</div></div>';
@@ -73,8 +76,22 @@
     return '<div class="rows">' + list.map(function (t) { return todoRow(t, scope, key); }).join('') + '</div>';
   }
 
+  /** "Planned 2h 30m of 8h" with a thin bar; turns amber past capacity. */
+  function loadBar(load) {
+    if (!load || !load.tasks) return '';
+    var pct = Math.min(100, Math.round(load.minutes / load.capacity * 100));
+    return '<div class="load' + (load.over ? ' over' : '') + '">' +
+      '<div class="load-text tiny">' +
+      '<span>Planned <strong>' + esc(UI.duration(load.minutes)) + '</strong> of ' + esc(UI.duration(load.capacity)) + '</span>' +
+      '<span class="dim">' + load.tasks + ' estimated</span>' +
+      '</div>' +
+      '<div class="load-bar"><i style="width:' + pct + '%"></i></div>' +
+      (load.over ? '<div class="tiny" style="color:var(--warn)">Over capacity by ' + esc(UI.duration(load.minutes - load.capacity)) + '</div>' : '') +
+      '</div>';
+  }
+
   global.Parts = {
-    editingId: null,
+    editingId: null, loadBar: loadBar,
     todoRow: todoRow, goalRow: goalRow, blockRow: blockRow,
     composer: composer, rows: rows
   };

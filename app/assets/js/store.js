@@ -33,6 +33,7 @@
       quickNotes: '',
       days: {}, weeks: {}, months: {}, years: {}, archives: {},
       trash: [], lastExportAt: 0, backupSnoozeUntil: 0,
+      recurring: [], templates: [], capacityMin: 480,
       settings: { carryOver: true, autoArchive: true, requirePin: true }
     };
   }
@@ -91,6 +92,9 @@
       if (!Array.isArray(u.trash)) u.trash = [];
       if (typeof u.lastExportAt !== 'number') u.lastExportAt = 0;
       if (typeof u.backupSnoozeUntil !== 'number') u.backupSnoozeUntil = 0;
+      if (!Array.isArray(u.recurring)) u.recurring = [];
+      if (!Array.isArray(u.templates)) u.templates = [];
+      if (typeof u.capacityMin !== 'number' || u.capacityMin <= 0) u.capacityMin = 480;
       Object.keys(u.days).forEach(function (dk) {
         var d = u.days[dk];
         if (!d || typeof d !== 'object') { delete u.days[dk]; return; }
@@ -542,6 +546,145 @@
     return n;
   }
 
+  /* ---------------- recurring tasks ----------------
+     A rule is a definition; instances are ordinary todos carrying `recurringId`.
+     They are materialised lazily when a day is opened, which keeps the stored
+     document small and makes a missed day self-heal. */
+
+  function matchesRule(rule, key) {
+    var wd = global.DateUtil.weekday(key);
+    if (rule.repeat === 'daily') return true;
+    if (rule.repeat === 'weekdays') return wd >= 1 && wd <= 5;
+    return (rule.days || []).indexOf(wd) >= 0;
+  }
+
+  function recurring() {
+    var u = user();
+    return (u && Array.isArray(u.recurring)) ? u.recurring : [];
+  }
+
+  function addRecurring(rule) {
+    var u = user();
+    if (!u || !rule || !rule.text) return null;
+    if (!Array.isArray(u.recurring)) u.recurring = [];
+    rule.id = rule.id || uid();
+    rule.createdAt = Date.now();
+    rule.from = rule.from || global.DateUtil.todayKey();
+    if (rule.active === undefined) rule.active = true;
+    u.recurring.push(rule);
+    saveNow();
+    return rule;
+  }
+
+  function removeRecurring(id) {
+    var u = user();
+    if (!u) return false;
+    u.recurring = (u.recurring || []).filter(function (r) { return r.id !== id; });
+    saveNow();
+    return true;
+  }
+
+  function toggleRecurring(id) {
+    var u = user();
+    if (!u) return null;
+    var found = null;
+    (u.recurring || []).forEach(function (r) { if (r.id === id) { r.active = r.active === false; found = r; } });
+    if (found) saveNow();
+    return found;
+  }
+
+  /** Create any missing instances of the active rules for one date. */
+  function ensureRecurring(key) {
+    var u = user();
+    if (!u || !Array.isArray(u.recurring) || !u.recurring.length) return 0;
+    if (!global.DateUtil.isKey(key)) return 0;
+
+    var d = day(key, true);
+    var have = {};
+    d.todos.forEach(function (t) { if (t.recurringId) have[t.recurringId] = 1; });
+
+    var created = 0;
+    u.recurring.forEach(function (r) {
+      if (r.active === false || !r.text) return;
+      if (r.from && key < r.from) return;
+      if (!matchesRule(r, key)) return;
+      if (have[r.id]) return;
+      d.todos.push({
+        id: uid(), text: r.text, done: false, prio: !!r.prio,
+        at: r.at || '', tags: (r.tags || []).slice(), est: r.est || 0,
+        recurringId: r.id
+      });
+      created++;
+    });
+    if (created) save();
+    return created;
+  }
+
+  function repeatLabel(rule) {
+    var names = global.DateUtil.DAYS_SHORT;
+    if (rule.repeat === 'daily') return 'every day';
+    if (rule.repeat === 'weekdays') return 'weekdays';
+    var days = (rule.days || []).slice().sort();
+    if (days.length === 1) return 'every ' + names[days[0]];
+    return days.map(function (d) { return names[d]; }).join(', ');
+  }
+
+  /* ---------------- templates ---------------- */
+
+  function templates() {
+    var u = user();
+    return (u && Array.isArray(u.templates)) ? u.templates : [];
+  }
+
+  function addTemplate(tpl) {
+    var u = user();
+    if (!u || !tpl || !tpl.name) return null;
+    if (!Array.isArray(u.templates)) u.templates = [];
+    tpl.id = uid();
+    tpl.createdAt = Date.now();
+    u.templates.push(tpl);
+    saveNow();
+    return tpl;
+  }
+
+  function removeTemplate(id) {
+    var u = user();
+    if (!u) return false;
+    u.templates = (u.templates || []).filter(function (t) { return t.id !== id; });
+    saveNow();
+    return true;
+  }
+
+  /* ---------------- daily capacity ---------------- */
+
+  function capacity() {
+    var u = user();
+    return (u && u.capacityMin) || 480;
+  }
+
+  function setCapacity(minutes) {
+    var u = user();
+    if (!u) return;
+    var n = Math.round(Number(minutes));
+    if (!n || n < 30) n = 30;
+    if (n > 1440) n = 1440;
+    u.capacityMin = n;
+    saveNow();
+  }
+
+  /** Total estimated minutes for a day (0 when nothing is estimated). */
+  function dayLoad(key) {
+    var d = peekDay(key);
+    var total = 0;
+    var estimated = 0;
+    if (d) {
+      d.todos.forEach(function (t) {
+        if (t.est) { total += t.est; estimated++; }
+      });
+    }
+    return { minutes: total, tasks: estimated, capacity: capacity(), over: total > capacity() };
+  }
+
   /* ---------------- backup nudge ---------------- */
 
   function markExported() {
@@ -585,6 +728,10 @@
     dayStats: dayStats, monthStats: monthStats, streak: streak, weekBars: weekBars,
     usage: usage, setTheme: setTheme, cycleTheme: cycleTheme,
     trash: trash, trashAdd: trashAdd, trashRemove: trashRemove, trashEmpty: trashEmpty,
+    recurring: recurring, addRecurring: addRecurring, removeRecurring: removeRecurring,
+    toggleRecurring: toggleRecurring, ensureRecurring: ensureRecurring, repeatLabel: repeatLabel,
+    templates: templates, addTemplate: addTemplate, removeTemplate: removeTemplate,
+    capacity: capacity, setCapacity: setCapacity, dayLoad: dayLoad,
     markExported: markExported, backupStatus: backupStatus, snoozeBackup: snoozeBackup,
     uid: uid, blankDay: blankDay
   };

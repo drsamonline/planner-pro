@@ -96,6 +96,7 @@
         (st.total ? ' <span class="pill">' + st.done + '/' + st.total + '</span>' : '') +
         '</h2><button class="btn btn-quiet btn-sm" data-act="go" data-href="#/day/' + tk + '">Open day ' + icon('right') + '</button></div>' +
         Parts.composer('day', tk, 'Add a task and press Enter…') +
+        Parts.loadBar(Store.dayLoad(tk)) +
         Parts.rows(todos, 'day', tk, 'check', 'No tasks yet — add the one thing that matters most.') +
         (todos.length ? '<div class="row-actions">' +
           (yOpen ? '<button class="btn btn-ghost btn-sm" data-act="carry-over" data-from="' + yesterday + '" data-to="' + tk + '">' +

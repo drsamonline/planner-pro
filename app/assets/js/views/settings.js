@@ -40,6 +40,8 @@
         '<select id="setTheme" data-bind="theme">' + Store.THEMES.map(function (t) {
           return '<option value="' + t.id + '"' + (u.theme === t.id ? ' selected' : '') + '>' + esc(t.label) + '</option>';
         }).join('') + '</select></div>' +
+        '<div class="field"><label for="setCapacity">Daily capacity (minutes)</label>' +
+        '<input type="number" id="setCapacity" min="30" max="1440" step="30" value="' + (u.capacityMin || 480) + '" data-bind="capacity"></div>' +
         '<div class="field"><label for="setWeekStart">Week starts on</label>' +
         '<select id="setWeekStart" data-bind="week-start">' +
         '<option value="1"' + (u.weekStart === 1 ? ' selected' : '') + '>Monday</option>' +
@@ -81,6 +83,27 @@
         '<div class="row-actions" style="margin-top:6px">' +
         '<button class="btn btn-quiet btn-sm" data-act="go" data-href="#/about">' + icon('info') + 'About &amp; shortcuts</button>' +
         '</div></div>' +
+        '</div>';
+
+      /* repeating tasks */
+      var rules = Store.recurring();
+      h += '<div class="card"><div class="card-head"><h2>' + icon('repeat') + 'Repeating tasks</h2>' +
+        '<span class="pill num">' + rules.length + '</span></div>' +
+        '<p class="tiny dim">Repeats are created when you open a day, so a missed day fills itself in.</p>' +
+        (rules.length
+          ? '<div class="rows">' + rules.map(function (r) {
+            return '<div class="row row-goal' + (r.active === false ? ' done' : '') + '">' +
+              '<span class="drag-spacer"></span>' +
+              '<button class="check' + (r.active === false ? '' : ' on') + '" data-act="recurring-toggle" data-id="' + esc(r.id) +
+              '" aria-label="Pause or resume">' + icon('check') + '</button>' +
+              '<div class="row-main"><span class="row-text" style="cursor:default">' + esc(r.text) + '</span>' +
+              '<span class="row-meta"><span class="pill pill-repeat">' + esc(Store.repeatLabel(r)) + '</span>' +
+              (r.est ? '<span class="pill pill-est">' + esc(UI.duration(r.est)) + '</span>' : '') + '</span></div>' +
+              '<div class="row-actions" style="opacity:1">' +
+              '<button class="icon-btn danger" data-act="recurring-delete" data-id="' + esc(r.id) + '" aria-label="Delete repeat">' +
+              icon('trash') + '</button></div></div>';
+          }).join('') + '</div>'
+          : UI.empty('repeat', 'Nothing repeats yet. Set it on a task, or in quick add.')) +
         '</div>';
 
       /* recently deleted */

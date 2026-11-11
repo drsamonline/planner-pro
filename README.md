@@ -14,9 +14,9 @@ Day, week, month and year planning in one quiet screen. Multi-profile, PIN-locke
 </p>
 
 <p align="center">
-  <img alt="Version" src="https://img.shields.io/badge/version-14.2.0-8B5CF6">
+  <img alt="Version" src="https://img.shields.io/badge/version-14.3.0-8B5CF6">
   <img alt="License" src="https://img.shields.io/badge/license-PolyForm%20Noncommercial%201.0.0-22D3EE">
-  <img alt="Tests" src="https://img.shields.io/badge/e2e%20checks-73%20passing-34D399">
+  <img alt="Tests" src="https://img.shields.io/badge/e2e%20checks-81%20passing-34D399">
   <img alt="Offline" src="https://img.shields.io/badge/works%20offline-100%25-34D399">
   <img alt="No tracking" src="https://img.shields.io/badge/tracking-none-lightgrey">
   <img alt="Dependencies" src="https://img.shields.io/badge/runtime%20deps-zero-brightgreen">
@@ -72,6 +72,9 @@ and stores everything on your device.
 - **Year** — year theme, year goals, twelve month cards with goals and task progress.
 - **Archive** — finished years move out of the way automatically; restore, export or delete any of them.
 - **Carry over** — pull yesterday's unfinished tasks into today in one click.
+- **Repeating tasks** — daily, weekdays or chosen days; instances are created lazily when you open a day, so a missed day fills itself in.
+- **Day templates** — build a routine once ("clinic day"), save it, apply it to any date.
+- **Estimates and capacity** — put minutes on a task and see planned time against your day; the bar turns amber when you overbook.
 - **Undo and a 30-day trash** — every delete is reversible, twice over.
 - **Drag to reorder** — order is meaning in a plan; move a task or block by its handle.
 
@@ -178,7 +181,7 @@ date, so a plan belongs to *one* week instead of repeating every week.
 
 ```bash
 npm install          # dev tooling only: puppeteer-core + electron-builder
-npm test             # 73 end-to-end checks in headless Chromium
+npm test             # 81 end-to-end checks in headless Chromium
 npm run build:single # one portable planner-pro.html
 npm run build:web    # zip of the offline web build in dist/
 ```
