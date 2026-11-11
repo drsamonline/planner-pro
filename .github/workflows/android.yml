@@ -62,7 +62,9 @@ jobs:
           ./gradlew assembleDebug --no-daemon
 
       - name: Rename the artifact
-        run: cp android/app/build/outputs/apk/debug/app-debug.apk planner-pro-${GITHUB_REF_NAME:-debug}.apk
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          cp android/app/build/outputs/apk/debug/app-debug.apk "planner-pro-${VERSION:-debug}-android.apk"
 
       - uses: actions/upload-artifact@v4
         with:
