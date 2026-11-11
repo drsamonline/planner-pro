@@ -1,0 +1,13 @@
+{
+  "appId": "com.drsamonline.plannerpro",
+  "appName": "Planner Pro",
+  "webDir": "app",
+  "bundledWebRuntime": false,
+  "android": {
+    "allowMixedContent": false,
+    "backgroundColor": "#0B1220"
+  },
+  "server": {
+    "androidScheme": "https"
+  }
+}
